@@ -10858,6 +10858,29 @@ localStorage.removeItem('prompter.preReset');say('Deshecho: todo vuelve a estar 
     lock();   /* bloqueado desde el principio hasta confirmar la sesión del dueño */
   })();
 
+  /* ================= Pedidos al momento (sin F5) =================
+     La conexión en directo de Supabase puede no avisar; este repaso cada 5 s (y al volver a la pestaña) enseña igual los pedidos nuevos. */
+  (function(){
+    var busy=false;
+    function poll(){
+      if(busy||!online()||document.hidden)return;
+      if(!WEB.orders){webLoad();return}
+      busy=true;
+      sb.from('ef_web_orders').select('*').eq('owner',user.id).order('created_at',{ascending:false}).limit(20).then(function(r){
+        busy=false;if(!r||r.error||!r.data||!WEB.orders)return;
+        var have={};WEB.orders.forEach(function(o){have[o.id]=1});
+        var nw=r.data.filter(function(o){return !have[o.id]});
+        if(!nw.length)return;
+        nw.reverse().forEach(function(o){WEB.orders.unshift(o);say('🛒 Pedido nuevo '+(o.channel==='whatsapp'?'por WhatsApp':'en la web')+': '+o.code)});
+        if(ui.view==='web')renderWeb();
+        if(ui.view==='home')try{renderDash()}catch(e){}
+        try{suBadge()}catch(e){}
+      },function(){busy=false});
+    }
+    setInterval(poll,5000);
+    document.addEventListener('visibilitychange',function(){if(!document.hidden)poll()});
+  })();
+
   initSupabase();
 })();
 </script>
