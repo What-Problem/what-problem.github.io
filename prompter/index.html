@@ -9687,7 +9687,7 @@ localStorage.removeItem('prompter.preReset');say('Deshecho: todo vuelve a estar 
       if(pending>0||brandTimer){later();return}   /* hubo cambios locales mientras tanto */
       var bd=rs[0].data,rr=bd?(+bd.rev||0):0,lr=state.brand.rev||0;
       if(!bd){if(lr>0)pushBrand()}
-      else if(rr>lr){state.brand=normBrand(Object.assign(defaultBrand(),bd.data));state.brand.rev=rr}
+      else if(rr>lr||firstEver){state.brand=normBrand(Object.assign(defaultBrand(),bd.data));state.brand.rev=rr}   /* navegador nuevo: manda la nube, nunca se sube una copia vacía */
       else if(lr>rr)pushBrand();
       /* Fusión por documento: gana el cambio más reciente; si dos dispositivos cambiaron el mismo diseño, se conserva una copia. */
       var lastSync=0;try{lastSync=+localStorage.getItem(SYNCKEY)||0}catch(e){}
