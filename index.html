@@ -954,13 +954,16 @@ saveCart();
 load().then(function(){S.gars=(S.gars||[]).filter(function(g){return GAR[g]});if(!S.gars.length)S.gars=['tee','sweat','hoodie'];ui.cust.gar=S.gars[0];applyBrand();renderHero();renderGrid();renderCustom();try{draftBanner()}catch(e){}try{renderPromo();renderExtras()}catch(e){}try{renderPuesto()}catch(e){}try{var _op=new URLSearchParams(location.search).get('op');if(_op){RV.order=_op.slice(0,20);setTimeout(function(){var o=$('#opiniones');if(o)o.scrollIntoView();rvOpen()},600)}}catch(e){}if(location.hash==='#condiciones')openLegal('cond');if(location.hash==='#aviso-legal')openLegal('aviso');
   if(G.length>1)setInterval(function(){if(ui.hero.touched||document.hidden||$('#heroStage').matches(':hover'))return;ui.hero.i=(ui.hero.i+1)%G.length;renderHero()},6000)});
 
-  /* ===== Anotador privado: solo el dueño (entra con #admin y su cuenta). El público no ve nada. Misma interfaz que el del Prompter. ===== */
+  /* ===== Anotador privado: solo el dueño. Se ve únicamente en un dispositivo donde ha iniciado sesión en el Prompter de esta misma dirección; el público no ve nada, tampoco con #admin. Misma interfaz que el del Prompter. ===== */
   (function(){
-    var KEY='ef.adm',NK='ef.adm.an',VER='9.76',st=null,AN={notes:[],del:{},pos:null,hidden:false,mini:false,ign:{},noted:{},open:{new:true,wait:false,chk:true,done:false}},RAD={errors:[]},U={tab:'notes',f:'all',type:'bug',src:'web',edit:null,redo:null,send:'all',sync:'',ok:0,busy:false,login:false,err:'',open:false},tm=0,DRAG=null,ST=false;
+    var KEY='ef.adm',NK='ef.adm.an',VER='9.77',st=null,AN={notes:[],del:{},pos:null,hidden:false,mini:false,ign:{},noted:{},open:{new:true,wait:false,chk:true,done:false}},RAD={errors:[]},U={tab:'notes',f:'all',type:'bug',src:'web',edit:null,redo:null,send:'all',sync:'',ok:0,busy:false,login:false,err:'',open:false},tm=0,DRAG=null,ST=false;
     try{st=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){}
     try{var a0=JSON.parse(localStorage.getItem(NK)||'null');if(a0&&Array.isArray(a0.notes))AN=Object.assign(AN,a0)}catch(e){}
     if(!EF.url||!EF.key||!EF.owner)return;
-    if(!st&&location.hash!=='#admin')return;
+    var ps0=prompterSession();if(ps0)st=ps0;
+    if(st&&st.uid!==EF.owner)st=null;
+    if(!st)return;   /* sin la sesión del dueño en este dispositivo no se ve NADA, ni con #admin */
+    setTimeout(verify,60);
     if(!AN.open)AN.open={new:true,wait:false,chk:true,done:false};
     /* al abrir una versión nueva de la web, lo que esperaba respuesta pasa a «Por comprobar» */
     (function(){var ch=0;AN.notes.forEach(function(n){if(n.st==='wait'&&n.src==='web'&&n.sentVer!==VER){n.st='sent';n.newVer=VER;n.upd=Date.now();ch++}});if(ch)try{localStorage.setItem(NK,JSON.stringify(AN))}catch(e){}})();
@@ -986,7 +989,15 @@ load().then(function(){S.gars=(S.gars||[]).filter(function(g){return GAR[g]});if
     function saveLocal(){try{localStorage.setItem(NK,JSON.stringify(AN))}catch(e){}}
     function save(){saveLocal();clearTimeout(tm);tm=setTimeout(sync,900)}
     function H(){return {apikey:EF.key,Authorization:'Bearer '+st.at,'Content-Type':'application/json'}}
-    function tok(j){st={at:j.access_token,rt:j.refresh_token,exp:Date.now()+(j.expires_in||3600)*1000-60000,uid:(j.user&&j.user.id)||(st&&st.uid),email:(j.user&&j.user.email)||(st&&st.email)};try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}}
+    function pKey(){var m=String(EF.url||'').match(/\/\/([^.]+)\./);return m?'sb-'+m[1]+'-auth-token':''}
+    /* la sesión que guarda el Prompter en este mismo navegador y dirección (solo si es la del dueño) */
+    function prompterSession(){try{var k=pKey(),raw=k&&localStorage.getItem(k);if(!raw)return null;var j=JSON.parse(raw);j=(j&&j.currentSession)||j;if(!j||!j.access_token||!j.user||j.user.id!==EF.owner)return null;return {at:j.access_token,rt:j.refresh_token,exp:(j.expires_at?j.expires_at*1000:Date.now()+36e5)-60000,uid:j.user.id,email:j.user.email,fromP:true}}catch(e){return null}}
+    /* al renovar la sesión desde la web, se guarda también donde la lee el Prompter para que no se pisen */
+    function toPrompter(j){try{var k=pKey(),o=JSON.parse(localStorage.getItem(k)||'null');if(!o||!j.access_token)return;var w=o.currentSession||o;w.access_token=j.access_token;w.refresh_token=j.refresh_token||w.refresh_token;w.expires_in=j.expires_in||3600;w.expires_at=Math.floor(Date.now()/1000)+(j.expires_in||3600);if(j.user)w.user=j.user;localStorage.setItem(k,JSON.stringify(o))}catch(e){}}
+    function tok(j){var fp=!!(st&&st.fromP);st={at:j.access_token,rt:j.refresh_token,exp:Date.now()+(j.expires_in||3600)*1000-60000,uid:(j.user&&j.user.id)||(st&&st.uid),email:(j.user&&j.user.email)||(st&&st.email),fromP:fp};try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}if(fp)toPrompter(j)}
+    /* comprueba en el servidor que la sesión es de verdad la del dueño; si no, el Anotador desaparece */
+    function vanish(){st=null;try{localStorage.removeItem(KEY)}catch(e){}var h=document.getElementById('efAnotador');if(h&&h.parentNode)h.parentNode.removeChild(h)}
+    function verify(){return refresh().then(function(){return fetch(EF.url+'/auth/v1/user',{headers:{apikey:EF.key,Authorization:'Bearer '+st.at}})}).then(function(r){return r.ok?r.json():Promise.reject(new Error('no'))}).then(function(u){if(!u||u.id!==EF.owner)throw new Error('no')}).catch(function(e){if(e&&e.name==='TypeError')return;vanish()})}
     function login(em,pw){return fetch(EF.url+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:EF.key,'Content-Type':'application/json'},body:JSON.stringify({email:em,password:pw})}).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(/Invalid login/i.test(j.msg||j.error_description||'')?'Email o contraseña incorrectos':(j.error_description||j.msg||'No se pudo entrar'));if(!j.user||j.user.id!==EF.owner)throw new Error('Esa cuenta no es la del dueño de esta web');tok(j)})})}
     function refresh(){if(!st)return Promise.reject(new Error('sin sesión'));if(Date.now()<st.exp)return Promise.resolve();return fetch(EF.url+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:EF.key,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:st.rt})}).then(function(r){return r.json().then(function(j){if(!r.ok||!j.access_token){st=null;try{localStorage.removeItem(KEY)}catch(e){}throw new Error('Sesión caducada: vuelve a entrar')}tok(j)})})}
     function logout(){st=null;try{localStorage.removeItem(KEY)}catch(e){}U.open=false;U.login=true;render()}
