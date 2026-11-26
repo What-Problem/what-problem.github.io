@@ -1,6 +1,6 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
 .wp-zone{display:grid;grid-template-columns:minmax(100px,210px) minmax(0,1fr);gap:12px;margin:12px 0;padding:10px;border:1px solid var(--line,#c6cbd5);border-radius:10px;break-inside:avoid}.wp-zone p{margin:5px 0}.wp-measure{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:9px}.wp-measure label{font-size:12px;display:grid;gap:4px}.wp-measure label:nth-child(3){grid-column:1/-1}.wp-measure input{min-width:0;width:100%}@media(max-width:600px){.wp-zone{grid-template-columns:1fr}.wp-measure{grid-template-columns:1fr}}@media print{.wp-zone{border:1px solid #999}.wp-plan{color:#111;background:white}.wp-plan .hint{color:#333}.wp-plan a{display:none}}
-</style></head><body>
+</style><style>html.wp-lock body>*:not(#wpGate){display:none!important}html.wp-lock{background:#0F1220}</style><script>/* Prompter en internet: se tapa todo hasta entrar con la cuenta del dueño (en el ordenador, abierto como archivo, no se pide) */if(/^https?:$/.test(location.protocol)&&!/[?&]test=1/.test(location.search))document.documentElement.className+=" wp-lock";</script></head><body>
 <title>Prompter.GPT-DTF</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -10813,6 +10813,51 @@ localStorage.removeItem('prompter.preReset');say('Deshecho: todo vuelve a estar 
   var bizPrevDash=renderDash;renderDash=function(){bizPrevDash();bizPaint();bizLoad()};
   try{renderDash()}catch(e){}
 
+
+  /* ================= Puerta de acceso (solo en la versión de internet) =================
+     En https nadie ve el Prompter sin iniciar sesión con la cuenta del dueño. Abierto como archivo en el ordenador no se pide.
+     Esto tapa la pantalla; los datos siguen protegidos por Supabase (cada fila es solo de su dueño). */
+  (function(){
+    var hosted=/^https?:$/.test(location.protocol)&&!/[?&]test=1/.test(location.search);
+    if(!hosted)return;
+    var GATE_OWNER='63a0e572-63dc-4ec7-adad-b52cc535c523',deny='',host=document.createElement('div'),root=document.documentElement;
+    host.id='wpGate';
+    var css=document.createElement('style');
+    css.textContent='#wpGate{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:20px;background:#0F1220;color:#F2F3F7;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}'+
+      '#wpGate form{width:100%;max-width:360px;display:grid;gap:12px;background:#171B2E;border:1px solid #2A3050;border-radius:16px;padding:24px}'+
+      '#wpGate h1{margin:0;font-size:20px}#wpGate p{margin:0;color:#A9B0CC;font-size:14px}#wpGate label{display:grid;gap:6px;font-size:13px;color:#A9B0CC}'+
+      '#wpGate input{font:inherit;font-size:16px;padding:11px 12px;border-radius:10px;border:1px solid #2A3050;background:#0F1220;color:#F2F3F7}'+
+      '#wpGate button{font:inherit;font-weight:600;padding:12px;border:0;border-radius:10px;background:#2F3BE0;color:#fff;cursor:pointer}#wpGate button:disabled{opacity:.6}'+
+      '#wpGate .gm{min-height:18px;font-size:13px;color:#FF8A8A}';
+    document.head.appendChild(css);
+    function paint(){
+      host.innerHTML='<form id="gt_form"><h1>Prompter · What Problem</h1><p>Acceso privado. Entra con tu cuenta.</p>'+
+        '<label>Email<input id="gt_email" type="email" autocomplete="username" required></label>'+
+        '<label>Contraseña<input id="gt_pass" type="password" autocomplete="current-password" required></label>'+
+        '<button type="submit" id="gt_go">Entrar</button><div class="gm" id="gt_msg" role="alert"></div></form>';
+      var m=host.querySelector('#gt_msg');m.textContent=deny;
+      host.querySelector('#gt_form').addEventListener('submit',function(e){
+        e.preventDefault();deny='';m.textContent='';
+        var em=host.querySelector('#gt_email').value.trim(),pw=host.querySelector('#gt_pass').value;
+        if(!em||!pw){m.textContent='Escribe tu email y contraseña';return}
+        if(!sb){m.textContent='No se pudo conectar con Supabase (¿sin conexión?). Recarga la página.';return}
+        var b=host.querySelector('#gt_go');b.disabled=true;
+        sb.auth.signInWithPassword({email:em,password:pw}).then(function(r){
+          b.disabled=false;
+          if(r&&r.error)m.textContent=/Invalid login/i.test(r.error.message)?'Email o contraseña incorrectos':'No se pudo entrar: '+r.error.message;
+        },function(){b.disabled=false;m.textContent='No se pudo conectar con Supabase'});
+      });
+    }
+    function lock(){root.classList.add('wp-lock');if(!host.parentNode){document.body.appendChild(host);paint()}else{var m=host.querySelector('#gt_msg');if(m)m.textContent=deny}}
+    function unlock(){root.classList.remove('wp-lock');if(host.parentNode)host.parentNode.removeChild(host)}
+    var prevSetUser=setUser;
+    setUser=function(u){
+      if(u&&u.id!==GATE_OWNER){deny='Esta cuenta no tiene acceso al Prompter.';lock();try{sb.auth.signOut()}catch(e){}return prevSetUser(null)}
+      if(u){unlock();return prevSetUser(u)}
+      lock();return prevSetUser(null);
+    };
+    lock();   /* bloqueado desde el principio hasta confirmar la sesión del dueño */
+  })();
 
   initSupabase();
 })();
