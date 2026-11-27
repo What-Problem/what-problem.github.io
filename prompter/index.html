@@ -10924,6 +10924,30 @@ localStorage.removeItem('prompter.preReset');say('Deshecho: todo vuelve a estar 
 <div id="printArea"></div>
 
 <style id="wp-workspace-theme">
+#wp-flow-start,#wp-flow-active{border:1px solid var(--line);border-radius:15px;background:var(--surface);color:var(--fg);padding:clamp(14px,3vw,24px);margin:0 0 16px}
+#wp-flow-start h2,#wp-flow-active h2{font-family:var(--font-display);margin:0;font-size:clamp(19px,3vw,27px);line-height:1.25;color:var(--fg)}
+#wp-flow-start p,#wp-flow-active p{margin:5px 0 0;color:var(--muted)}
+#wp-flow-start button,#wp-flow-active button{color:var(--fg);font:inherit;min-height:44px;cursor:pointer}
+#wp-flow-start button:focus-visible,#wp-flow-active button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.wp-flow-choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:8px;margin-top:14px}
+.wp-flow-choice{display:flex;flex-direction:column;align-items:flex-start;gap:3px;border:1px solid var(--line);border-radius:11px;padding:11px 13px;background:var(--bg);text-align:left}
+.wp-flow-choice b{font-weight:700}
+.wp-flow-choice small{color:var(--muted)}
+#wp-flow-start .wp-flow-choice[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent)}
+.wp-flow-detail{margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}
+.wp-flow-detail h3{margin:0 0 9px;font-size:16px}
+.wp-flow-steps{display:grid;gap:6px;list-style:none;margin:0;padding:0}
+.wp-flow-step{display:flex;align-items:center;width:100%;min-height:44px;gap:9px;border:1px solid var(--line);border-radius:9px;padding:6px 9px;background:transparent;text-align:left}
+.wp-flow-step:hover,.wp-flow-choice:hover{border-color:var(--accent)}
+.wp-flow-step[aria-current=step]{border-color:var(--accent);background:var(--accent-soft)}
+.wp-flow-number{display:grid;place-items:center;flex:0 0 24px;height:24px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-weight:700}
+.wp-flow-step span:last-child{min-width:0;overflow-wrap:anywhere}
+.wp-flow-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:8px}
+.wp-flow-close{border:1px solid var(--line);border-radius:9px;background:transparent;padding:5px 10px}
+#wp-flow-active .wp-flow-steps{grid-template-columns:repeat(auto-fit,minmax(min(100%,166px),1fr));margin-top:10px}
+#wp-flow-active .wp-flow-hint{margin-top:10px}
+@media print{#wp-flow-start,#wp-flow-active{display:none!important}}
+
 #drawer .dr-panel{width:min(460px,100vw);padding:0 16px 22px;overscroll-behavior:contain}
 #drawer .dr-head{position:sticky;top:0;z-index:2;margin:0 -16px 12px;padding:12px 16px;background:var(--bg);border-bottom:1px solid var(--line)}
 #drawer .dr-head b{font-size:19px}
@@ -11059,6 +11083,105 @@ html.wp-workspace {
   observer.observe(original,{subtree:true,attributes:true,attributeFilter:['aria-selected']});
   var web=document.getElementById('webBox');
   if(web)observer.observe(web,{subtree:true,childList:true});
+
+  var flows=[
+    {name:'Atender un pedido online',short:'Recibir, mandar la prueba y entregar.',steps:[
+      ['Abre Pedidos online','web','orders','Elige el pedido y revisa lo que pidió el cliente.'],
+      ['Consulta WhatsApp','chats',null,'Resuelve dudas antes de preparar la prueba.'],
+      ['Prepara o revisa el diseño','lib',null,'Abre la versión del diseño que corresponde al pedido.'],
+      ['Envía la prueba y sigue el pedido','web','orders','Desde el pedido puedes gestionar la prueba, el cobro y el estado.']]},
+    {name:'Crear un pedido manual',short:'Para encargos que recibes tú.',steps:[
+      ['Crea el pedido de cliente','corders','new','Añade cliente, prendas, diseño y cantidades.'],
+      ['Revisa el encargo','corders',null,'Abre el pedido creado y comprueba datos y líneas.'],
+      ['Prepara el archivo','prod','prep','Ajusta el archivo a las medidas del encargo.'],
+      ['Abre Fabricación','works',null,'Consulta las fichas y registra el trabajo cuando esté listo.']]},
+    {name:'Preparar un diseño',short:'Del encargo al archivo de impresión.',steps:[
+      ['Abre Nuevo encargo','gen',null,'Define qué se va a diseñar y con qué referencias.'],
+      ['Revisa versiones en Biblioteca','lib',null,'Elige la versión que vas a preparar o aprobar.'],
+      ['Ajusta el archivo de impresión','prod','prep','Prepara el tamaño y el fondo antes de exportar.'],
+      ['Comprueba el archivo','prod','check','Revisa si cumple las condiciones para imprimir.']]},
+    {name:'Montar y recibir una lámina DTF',short:'Lámina, compra y transfers.',steps:[
+      ['Abre Montar lámina DTF','dtf',null,'Reúne los archivos y cantidades que vas a enviar.'],
+      ['Abre Compras DTF','purch',null,'Consulta la compra y registra lo que llega.'],
+      ['Revisa Transfers','lots',null,'Comprueba los transfers disponibles para fabricar.']]},
+    {name:'Fabricar un pedido',short:'Stock, ficha y acabado.',steps:[
+      ['Revisa el stock de prendas','stock',null,'Comprueba las tallas y colores necesarios.'],
+      ['Revisa los transfers','lots',null,'Comprueba que tienes material para las unidades del pedido.'],
+      ['Abre Fabricación','works',null,'Abre la ficha y registra el avance.'],
+      ['Revisa la entrega del pedido','web','orders','Consulta el pedido online y actualiza su estado cuando proceda.']]},
+    {name:'Preparar la tienda',short:'Prendas, precios y galería.',steps:[
+      ['Revisa prendas y precios','web','brands','Elige modelos, colores y precios desde la configuración actual.'],
+      ['Revisa datos y entrega','web','data','Comprueba plazos, recogida, envío y datos de contacto.'],
+      ['Abre la galería','web','designs','Revisa los diseños que quieres mostrar. La publicación se confirma desde la galería.']]}
+  ];
+  var home=document.querySelector('main[data-view="home"]');
+  var start=document.createElement('section'), progress=document.createElement('section');
+  start.id='wp-flow-start';progress.id='wp-flow-active';progress.hidden=true;
+  start.innerHTML='<h2>¿Qué quieres hacer?</h2><p>Elige una tarea y abre los pasos que necesites.</p><div class="wp-flow-choices"></div><div class="wp-flow-detail" hidden></div>';
+  progress.setAttribute('aria-label','Guía de la tarea');
+  var mainControls=home&&home.querySelector('.controls');
+  if(mainControls)mainControls.prepend(start);
+  if(home)home.before(progress);
+  var choices=start.querySelector('.wp-flow-choices'),detail=start.querySelector('.wp-flow-detail');
+  var chosen=-1,stepIndex=-1,opened=false;
+  function flowText(tag,text,klass){
+    var el=document.createElement(tag);el.textContent=text||'';
+    if(klass)el.className=klass;
+    return el;
+  }
+  function launchFlowStep(i){
+    var s=flows[chosen].steps[i], route=s[1], sub=s[2];
+    if(sub==='new'){
+      var action=button('','');action.dataset.qa='qaOrder';action.hidden=true;document.body.append(action);action.click();action.remove();
+    }else{
+      var target=findItem(route,sub);
+      if(!target)return;
+      target.click();
+      if(route==='web'){
+        var tab=document.querySelector('#webBox [data-wtab="'+sub+'"]');
+        if(tab)tab.click();
+      }
+    }
+    stepIndex=i;opened=true;renderFlow();
+    if(!progress.hidden)progress.querySelector('h2').focus({preventScroll:true});
+  }
+  function stepList(flow,selected){
+    var list=flowText('ol','','wp-flow-steps');
+    flow.steps.forEach(function(s,i){
+      var li=document.createElement('li'), control=button('','wp-flow-step');
+      control.append(flowText('span',String(i+1),'wp-flow-number'),flowText('span',s[0]));
+      control.firstElementChild.setAttribute('aria-hidden','true');
+      if(selected===i)control.setAttribute('aria-current','step');
+      control.addEventListener('click',function(){launchFlowStep(i)});
+      li.append(control);list.append(li);
+    });
+    return list;
+  }
+  function flowVisibility(){
+    progress.hidden=!opened||!home||!home.hidden;
+  }
+  function renderFlow(){
+    Array.from(choices.children).forEach(function(el,i){el.setAttribute('aria-pressed',String(chosen===i))});
+    detail.hidden=chosen<0;
+    if(chosen<0){flowVisibility();return}
+    var flow=flows[chosen], title=flowText('h2',flow.name), header=flowText('div','','wp-flow-head');
+    title.tabIndex=-1;
+    var close=button('Cerrar guía','wp-flow-close');
+    close.addEventListener('click',function(){opened=false;flowVisibility()});
+    header.append(title,close);
+    detail.replaceChildren(flowText('h3',flow.name),stepList(flow,-1));
+    progress.replaceChildren(header,stepList(flow,stepIndex),flowText('p',stepIndex>=0?flow.steps[stepIndex][3]:'','wp-flow-hint'));
+    flowVisibility();
+  }
+  flows.forEach(function(flow,i){
+    var el=button('','wp-flow-choice');
+    el.setAttribute('aria-pressed','false');
+    el.append(flowText('b',flow.name),flowText('small',flow.short));
+    el.addEventListener('click',function(){chosen=i;stepIndex=-1;opened=false;renderFlow()});
+    choices.append(el);
+  });
+  if(home)new MutationObserver(flowVisibility).observe(home,{attributes:true,attributeFilter:['hidden']});
+
   renderGroup(0);
   document.documentElement.classList.add('wp-workspace');
 })();
