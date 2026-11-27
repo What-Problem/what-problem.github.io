@@ -8119,15 +8119,37 @@ var BUCKET='estilofijo';
   document.body.insertAdjacentHTML('beforeend',
     '<div class="tbar" id="tbar" hidden><button type="button" class="tb-btn" data-tb="menu" aria-label="Abrir el menú">'+ico('menu')+'<span>Menú</span></button><div class="tb-crumb" id="tbCrumb"></div>'+
     '<button type="button" class="tb-btn" data-tb="search" aria-label="Buscar">'+ico('search')+'<span>Buscar</span><kbd>Ctrl K</kbd></button></div>'+
-    '<div class="drawer" id="drawer" hidden><div class="dr-back" data-tb="close"></div><aside class="dr-panel" role="dialog" aria-label="Menú"><div class="dr-head"><b>Ir a…</b><button type="button" class="tb-btn" data-tb="close" aria-label="Cerrar">'+ico('x')+'</button></div><div id="drBody"></div></aside></div>'+
+    '<div class="drawer" id="drawer" hidden><div class="dr-back" data-tb="close"></div><aside class="dr-panel" role="dialog" aria-label="Menú"><div class="dr-head"><b>Menú</b><button type="button" class="tb-btn" data-tb="close" aria-label="Cerrar">'+ico('x')+'</button></div><div id="drBody"></div></aside></div>'+
     '<div class="cmdk" id="cmdk" hidden><div class="dr-back" data-tb="close"></div><div class="ck-panel" role="dialog" aria-label="Buscar"><div class="ck-in">'+ico('search')+'<input type="text" id="ckInput" placeholder="Busca una sección, un pedido, una lámina o una acción…" autocomplete="off"></div><div class="ck-list" id="ckList"></div><div class="ck-foot"><span><kbd>↑</kbd><kbd>↓</kbd> moverse</span><span><kbd>Enter</kbd> abrir</span><span><kbd>Esc</kbd> cerrar</span></div></div></div>'+
     '<div class="fabs"><div class="fab-menu" id="fabMenu" hidden></div><button type="button" class="fab ghost" id="toTop" data-tb="top" aria-label="Volver arriba" hidden>'+ico('up')+'</button><button type="button" class="fab" data-tb="fab" aria-label="Acciones rápidas" aria-expanded="false">'+ico('plus')+'</button></div>');
   var QACTS=[['qaOrder','Nuevo pedido de cliente','orders'],['qaSheet','Montar una lámina DTF','dtf'],['qaRecv','Registrar llegada de una compra','truck'],['go:shop9','Vender una camiseta','tag'],['go:pmodes','Prompt para ChatGPT','chat'],['go:works','Estampar (fabricación)','press'],['bk','Copia de seguridad','file']];
   function navItems(){return $$('#nav [data-nav]').filter(function(b){return itemAllowed(b)})}
   function itemLabel(b){return b.textContent.trim()}
-  function drawerHtml(){var I=navItems();return '<div class="dr-grid">'+['home','design','orders','dtf','shop','brand','settings'].map(function(sp){var L=I.filter(function(b){return b.dataset.sp===sp});
-      return '<section class="dr-card"><h3>'+ico(sp)+SPN[sp]+'</h3><div class="dr-items">'+L.map(function(b){var i=$$('#nav [data-nav]').indexOf(b);return '<button type="button" class="dr-item'+(b.getAttribute('aria-selected')==='true'?' on':'')+'" data-ni="'+i+'">'+esc(itemLabel(b))+'</button>'}).join('')+'</div></section>'}).join('')+'</div>'+
-    '<div class="dr-quick"><b>Acciones rápidas</b><div>'+QACTS.map(function(q){return '<button type="button" class="pill-btn" data-qa="'+q[0]+'">'+ico(q[2])+esc(q[1])+'</button>'}).join('')+'</div></div>'}
+  var DR_AREAS=[
+  ['Hoy','home',['home','setup']],
+  ['Pedidos','orders',['corders','chats','orders']],
+  ['Diseños','design',['pmodes','gen','lab','sets','col','lib','proj','plan','adn']],
+  ['Taller','shop',['prod','dtf','purch','lots','gang','works','taller','stock','buy','cfg']],
+  ['Tienda','brand',['web','cat','shop9']],
+  ['Negocio','settings',['money','sales','growth','data','later']]
+];
+function drawerHtml(){
+  var buttons=$$('#nav [data-nav]'), available=navItems(), current=available.find(function(b){return b.getAttribute('aria-selected')==='true'});
+  function row(b){
+    return '<button type="button" class="dr-item" data-ni="'+buttons.indexOf(b)+'"'+(b===current?' aria-current="page"':'')+'>'+esc(itemLabel(b))+'<span aria-hidden="true">›</span></button>';
+  }
+  var sections=DR_AREAS.map(function(area){
+    var items=available.filter(function(b){return area[2].indexOf(b.dataset.nav)!==-1});
+    if(!items.length)return '';
+    var open=current?items.indexOf(current)!==-1:area[1]==='home';
+    return '<details class="dr-section"'+(open?' open':'')+'><summary>'+ico(area[1])+'<span>'+area[0]+'</span></summary><div class="dr-links">'+items.map(row).join('')+'</div></details>';
+  }).join('');
+  return '<button type="button" class="dr-search" data-tb="search">'+ico('search')+'<span>Buscar secciones, pedidos o diseños</span><kbd>Ctrl K</kbd></button>'+
+    '<div class="dr-shortcuts"><button type="button" class="dr-item" data-tb="orders">'+ico('orders')+'<span>Pedidos online</span></button>'+
+    '<button type="button" class="dr-item" data-qa="go:chats">'+ico('chat')+'<span>WhatsApp</span></button></div>'+
+    '<nav class="dr-sections" aria-label="Áreas de trabajo">'+sections+'</nav>'+
+    '<details class="dr-section dr-actions"><summary>'+ico('plus')+'<span>Acciones rápidas</span></summary><div class="dr-links">'+QACTS.map(function(q){return '<button type="button" class="dr-item" data-qa="'+q[0]+'">'+esc(q[1])+'<span aria-hidden="true">›</span></button>'}).join('')+'</div></details>';
+}
   function openDrawer(){$('#drBody').innerHTML=drawerHtml();$('#drawer').hidden=false;document.body.classList.add('noscroll')}
   function closeAll(){$('#drawer').hidden=true;$('#cmdk').hidden=true;$('#fabMenu').hidden=true;var f=$('[data-tb=fab]');if(f)f.setAttribute('aria-expanded','false');document.body.classList.remove('noscroll')}
   function goNav(i){var b=$$('#nav [data-nav]')[i];if(!b)return;closeAll();b.click();window.scrollTo({top:0,behavior:'smooth'})}
@@ -8151,7 +8173,7 @@ var BUCKET='estilofijo';
   function openCk(){closeAll();$('#cmdk').hidden=false;CK.i=0;var i=$('#ckInput');i.value='';ckRender();setTimeout(function(){i.focus()},20)}
   document.addEventListener('click',function(e){var t=e.target.closest&&e.target.closest('[data-tb],[data-ni],[data-qa],[data-cki]');if(!t)return;
     if(t.dataset.ni!=null){goNav(+t.dataset.ni);return}if(t.dataset.qa){runQa(t.dataset.qa);return}if(t.dataset.cki!=null){var x=CK.list[+t.dataset.cki];if(x)x.run();return}
-    var k=t.dataset.tb;if(k==='menu')openDrawer();else if(k==='close')closeAll();else if(k==='search')openCk();else if(k==='top')window.scrollTo({top:0,behavior:'smooth'});
+    var k=t.dataset.tb;if(k==='menu')openDrawer();else if(k==='close')closeAll();else if(k==='search')openCk();else if(k==='orders'){closeAll();goWeb('orders')}else if(k==='top')window.scrollTo({top:0,behavior:'smooth'});
     else if(k==='fab'){var m=$('#fabMenu'),open=m.hidden;closeAll();if(open){m.innerHTML=QACTS.map(function(q){return '<button type="button" class="fab-item" data-qa="'+q[0]+'">'+ico(q[2])+'<span>'+esc(q[1])+'</span></button>'}).join('');m.hidden=false;t.setAttribute('aria-expanded','true')}}});
   document.addEventListener('keydown',function(e){var typing=/INPUT|TEXTAREA|SELECT/.test((document.activeElement||{}).tagName||'');
     if((e.ctrlKey||e.metaKey)&&(e.key==='k'||e.key==='K')){e.preventDefault();openCk();return}
@@ -8523,7 +8545,7 @@ var BUCKET='estilofijo';
     if(!sb)return '<div class="dr-acct" id="drAcct"><span class="dr-av">'+ico('settings')+'</span><div><b>Sin conexión con Supabase</b><span class="meta">Todo se guarda solo en este navegador.</span></div></div>';
     if(!user)return '<div class="dr-acct" id="drAcct"><span class="dr-av">'+ico('settings')+'</span><div><b>Sin sesión</b><span class="meta">Todo se guarda solo en este navegador.</span></div><button type="button" class="btn sm" data-tb="login">Entrar</button></div>';
     var em=user.email||'';return '<div class="dr-acct" id="drAcct"><span class="dr-av">'+esc((em[0]||'?').toUpperCase())+'</span><div><span class="meta">Conectado como</span><b>'+esc(em)+'</b><span id="drSync" class="pill '+syncTone(syncTxt)+'">'+esc(syncTxt||'—')+'</span></div><button type="button" class="btn ghost sm" data-act="logout">Cerrar sesión</button></div>'}
-  drawerHtml=(function(prev){return function(){return acctHtml()+prev()}})(drawerHtml);
+  drawerHtml=(function(prev){return function(){return prev()+acctHtml()}})(drawerHtml);
   document.addEventListener('click',function(e){var t=e.target.closest&&e.target.closest('[data-tb=login]');if(!t)return;closeAll();var b=$('#authBox');if(b){b.hidden=false;b.scrollIntoView({behavior:'smooth',block:'center'});var i=$('#au_email');if(i)setTimeout(function(){i.focus()},300)}});
   document.addEventListener('click',function(e){var t=e.target.closest&&e.target.closest('#drawer [data-act=logout]');if(t)setTimeout(closeAll,0)});
 
@@ -8959,7 +8981,7 @@ localStorage.removeItem('prompter.preReset');say('Deshecho: todo vuelve a estar 
     return (pl?'<button type="button" class="cr-back" data-crback title="Volver a '+esc(pl)+'">‹ <span>'+esc(pl)+'</span></button>':'')+'<button type="button" class="cr-sp" data-crsp="'+a.dataset.sp+'" title="Ver todo lo de '+esc(SPN[a.dataset.sp])+'">'+ico(a.dataset.sp)+SPN[a.dataset.sp]+'</button><span class="cr-sep">›</span><b>'+esc(itemLabel(a))+'</b>'};
   document.addEventListener('click',function(e){var t=e.target.closest&&e.target.closest('[data-crsp],[data-crback]');if(!t)return;
     if(t.hasAttribute('data-crback')){var v=VH.pop();if(!v)return;var b=$('#nav [data-nav="'+v+'"]');showView.back=true;if(b)b.click();else showView(v);window.scrollTo(0,0);return}
-    openDrawer();var sec=Array.from($$('#drBody .dr-card')).find(function(s){return s.querySelector('h3').textContent.trim()===SPN[t.dataset.crsp]});if(sec){sec.classList.add('flash');sec.scrollIntoView({block:'start'});setTimeout(function(){sec.classList.remove('flash')},1400)}});
+    openDrawer();var sec=$('#drBody .dr-section[open] summary');if(sec)sec.focus()});
   /* 2 · Anotador mini (Mayús + clic en «Anotador»): solo una línea para apuntar al momento */
   function miniOn(){return !!AN.mini}
   function miniRender(){var m=$('#anMini');if(!miniOn()){if(m)m.remove();$('#anFab')&&$('#anFab').classList.remove('mini-on');return}
@@ -10902,6 +10924,31 @@ localStorage.removeItem('prompter.preReset');say('Deshecho: todo vuelve a estar 
 <div id="printArea"></div>
 
 <style id="wp-workspace-theme">
+#drawer .dr-panel{width:min(460px,100vw);padding:0 16px 22px;overscroll-behavior:contain}
+#drawer .dr-head{position:sticky;top:0;z-index:2;margin:0 -16px 12px;padding:12px 16px;background:var(--bg);border-bottom:1px solid var(--line)}
+#drawer .dr-head b{font-size:19px}
+#drawer .dr-search,#drawer .dr-item{display:flex;align-items:center;gap:9px;min-height:44px;font:inherit;color:var(--fg);text-align:left}
+#drawer .dr-search{width:100%;padding:8px 11px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+#drawer .dr-search span{flex:1}
+#drawer .dr-search kbd{font-size:11px;white-space:nowrap}
+#drawer .dr-shortcuts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:9px 0 17px}
+#drawer .dr-shortcuts button{border:1px solid var(--line);border-radius:10px;background:var(--accent-soft);color:var(--accent);justify-content:flex-start}
+#drawer .dr-shortcuts button span{margin:0;color:inherit}
+#drawer .dr-section{border-top:1px solid var(--line)}
+#drawer .dr-section summary{display:flex;align-items:center;gap:10px;min-height:48px;padding:6px 9px;cursor:pointer;font-weight:650;list-style:none;color:var(--fg)}
+#drawer .dr-section summary::-webkit-details-marker{display:none}
+#drawer .dr-section summary svg,#drawer .dr-shortcuts svg,#drawer .dr-search svg{width:18px;height:18px;flex-shrink:0;color:var(--accent)}
+#drawer .dr-section summary::after{content:'+';margin-left:auto;color:var(--muted)}
+#drawer .dr-section[open] summary::after{content:'−'}
+#drawer .dr-links{display:grid;gap:2px;margin:0 0 8px 24px;padding:0 0 0 8px;border-left:1px solid var(--line)}
+#drawer .dr-item{width:100%;border:0;border-radius:8px;padding:7px 10px;background:transparent}
+#drawer .dr-item span{margin-left:auto;color:var(--muted)}
+#drawer .dr-item:hover,#drawer .dr-item[aria-current=page]{background:var(--accent-soft);color:var(--accent)}
+#drawer .dr-item[aria-current=page]{font-weight:700}
+#drawer .dr-acct{margin:16px 0 0;border-radius:12px}
+#drawer .dr-acct>div{min-width:0;overflow-wrap:anywhere}
+@media(max-width:360px){#drawer .dr-search kbd{display:none}#drawer .dr-shortcuts{grid-template-columns:1fr}}
+
 html.wp-workspace {
   --workspace-border:var(--line);
   --workspace-panel:var(--surface);
