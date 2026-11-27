@@ -118,7 +118,7 @@ section.s{padding:56px 0}
 .drop img{max-height:180px;border-radius:12px}
 #customPrev .gar{width:56%}
 @media (max-width:420px){.seg button{padding:8px 11px;font-size:15px}}
-label.f .opt-l{font-weight:500;color:var(--ink2)}
+label.f .opt-l{font-weight:500;color:var(--ink2)}.adv-tip{margin:8px 0 0}details.adv{margin-top:12px;border:1.5px solid var(--line);border-radius:14px;padding:10px 14px}details.adv summary{cursor:pointer;font-weight:700}details.adv .adv-c{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 4px}details.adv .chip small{font-weight:500;opacity:.75}
 label.f{display:grid;gap:6px;font-weight:600;font-size:15px;margin-top:14px}
 input.t,textarea.t,select.t{border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;background:#fff;font-weight:500;width:100%}
 input.t:focus,textarea.t:focus{border-color:var(--brand);outline:none}
@@ -362,6 +362,8 @@ footer .wrap{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:24px;align-ite
       <div id="desTabs"></div><div class="drop" id="drop" tabindex="0" role="button" aria-label="Subir una foto"><svg class="ico" style="width:38px;height:38px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg><b>Sube una foto o imagen</b><span class="note">o arrástrala aquí · también vale sin foto</span></div>
       <input type="file" id="file" accept="image/*" hidden>
       <label class="f">Describe tu idea o el dibujo<textarea class="t" id="idea" rows="3" placeholder="Ej.: un paraguas lila con lluvia marrón, estilo dibujo animado"></textarea></label>
+      <p class="note adv-tip">💡 <b>Cuanto más detallada sea la explicación, mejor resultado.</b> Cuenta qué aparece, cómo es, los colores, el estilo y el ambiente.</p>
+      <details class="adv" id="advBox"><summary>✨ Opciones avanzadas <span class="opt-l">· recomendado: tarda un poco más, pero sale mejor</span></summary><div id="advBody"></div></details>
       <label class="f"><span>Texto que quieres en la prenda <span class="opt-l">(opcional)</span></span><input class="t" id="ctext" maxlength="60" placeholder="Ej.: LOLA 2026"></label>
       <div id="tposBox"></div>
       <div id="wzQual"></div>
@@ -1375,7 +1377,7 @@ load().then(function(){S.gars=(S.gars||[]).filter(function(g){return GAR[g]});if
 
   /* ===== Anotador privado: solo el dueño. Se ve únicamente en un dispositivo donde ha iniciado sesión en el Prompter de esta misma dirección; el público no ve nada, tampoco con #admin. Misma interfaz que el del Prompter. ===== */
   (function(){
-    var KEY='ef.adm',NK='ef.adm.an',VER='9.87',st=null,AN={notes:[],del:{},pos:null,hidden:false,mini:false,ign:{},noted:{},open:{new:true,wait:false,chk:true,done:false}},RAD={errors:[]},U={tab:'notes',f:'all',type:'bug',src:'web',edit:null,redo:null,send:'all',sync:'',ok:0,busy:false,login:false,err:'',open:false},tm=0,DRAG=null,ST=false;
+    var KEY='ef.adm',NK='ef.adm.an',VER='9.88',st=null,AN={notes:[],del:{},pos:null,hidden:false,mini:false,ign:{},noted:{},open:{new:true,wait:false,chk:true,done:false}},RAD={errors:[]},U={tab:'notes',f:'all',type:'bug',src:'web',edit:null,redo:null,send:'all',sync:'',ok:0,busy:false,login:false,err:'',open:false},tm=0,DRAG=null,ST=false;
     try{st=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){}
     try{var a0=JSON.parse(localStorage.getItem(NK)||'null');if(a0&&Array.isArray(a0.notes))AN=Object.assign(AN,a0)}catch(e){}
     if(!EF.url||!EF.key||!EF.owner)return;
@@ -1569,6 +1571,31 @@ load().then(function(){S.gars=(S.gars||[]).filter(function(g){return GAR[g]});if
   })();
 
 window.__web={placement:function(){return wpPlacement.apply(null,arguments)},fontNames:WP_FONT_NAMES,frame:frCl,area:wpArea,openLegal:function(k){openLegal(k)},payHtml:function(c,t){return payHtml(c,t)},S:function(){return S},G:function(){return G},cart:function(){return cart}};
+})();
+</script>
+<script>
+/* 9.88 · opciones avanzadas del diseño: estilo, luz, sombras, fondo, colores y escena. Lo elegido se escribe al final de la idea («✨ Detalles: …»), así llega al pedido sin tocar nada más. Mismas opciones que el bot. */
+(function(){
+  var ADV=[['style','Estilo',[['Ilustración'],['Realista'],['Dibujos animados'],['Minimalista'],['Vintage / retro'],['Anime / manga'],['Urbano / graffiti'],['Acuarela']]],
+    ['light','Iluminación',[['Natural suave'],['Atardecer cálido'],['Dramática'],['Neón / noche'],['De estudio']]],
+    ['shadow','Sombras',[['Sin sombras'],['Suaves'],['Marcadas']]],
+    ['bg','Fondo',[['Sin fondo','lo mejor para estampar'],['Fondo sencillo'],['Escena completa']]],
+    ['pal','Colores',[['Vivos'],['Pastel'],['Pocos colores'],['Blanco y negro']]]];
+  var TAG='✨ Detalles: ';
+  function ta(){return document.getElementById('idea')}
+  function parse(){var t=ta(),o={};if(!t)return o;var m=t.value.split('\n').filter(function(l){return l.indexOf(TAG)===0})[0];if(!m)return o;
+    m.slice(TAG.length).split(' · ').forEach(function(p){var i=p.indexOf(': ');if(i<0)return;var k=p.slice(0,i).toLowerCase(),v=p.slice(i+2);ADV.concat([['ctx','Escena']]).forEach(function(a){if(a[1].toLowerCase()===k)o[a[0]]=v})});return o}
+  function write(o){var t=ta();if(!t)return;var base=t.value.split('\n').filter(function(l){return l.indexOf(TAG)!==0}).join('\n').replace(/\s+$/,'');
+    var p=ADV.filter(function(a){return o[a[0]]}).map(function(a){return a[1].toLowerCase()+': '+o[a[0]]});if(o.ctx)p.push('escena: '+o.ctx);
+    t.value=base+(p.length?(base?'\n':'')+TAG+p.join(' · '):'');t.dispatchEvent(new Event('input',{bubbles:true}))}
+  function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+  function paint(){var b=document.getElementById('advBody');if(!b)return;var o=parse();
+    b.innerHTML='<p class="note">Elige solo lo que quieras; lo que dejes sin marcar lo decidimos nosotros en la prueba.</p>'+ADV.map(function(a){return '<div class="lbl">'+a[1]+'</div><div class="chips adv-c">'+a[2].map(function(x){return '<button type="button" class="chip" data-adv="'+a[0]+'" data-v="'+esc(x[0])+'" aria-pressed="'+(o[a[0]]===x[0])+'"'+(x[1]?' title="'+esc(x[1])+'"':'')+'>'+esc(x[0])+(x[1]?' <small>('+esc(x[1])+')</small>':'')+'</button>'}).join('')+'</div>'}).join('')+
+      '<label class="f">Escena o contexto <span class="opt-l">(opcional)</span><input class="t" id="advCtx" maxlength="200" value="'+esc(o.ctx||'')+'" placeholder="Ej.: flotando entre planetas, ambiente tranquilo"></label>'}
+  document.addEventListener('click',function(e){var t=e.target.closest&&e.target.closest('[data-adv]');if(!t)return;var o=parse(),k=t.dataset.adv,v=t.dataset.v;o[k]=o[k]===v?'':v;write(o);paint()});
+  document.addEventListener('change',function(e){if(e.target&&e.target.id==='advCtx'){var o=parse();o.ctx=e.target.value.replace(/·/g,',').trim().slice(0,200);write(o)}});
+  document.addEventListener('toggle',function(e){if(e.target&&e.target.id==='advBox'&&e.target.open)paint()},true);
+  document.addEventListener('input',function(e){if(e.target&&e.target.id==='idea'){var d=document.getElementById('advBox');if(d&&d.open&&!e.isTrusted)return;if(d&&d.open)paint()}});
 })();
 </script>
 </body>
