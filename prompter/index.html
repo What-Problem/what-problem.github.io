@@ -10881,6 +10881,21 @@ localStorage.removeItem('prompter.preReset');say('Deshecho: todo vuelve a estar 
     document.addEventListener('visibilitychange',function(){if(!document.hidden)poll()});
   })();
 
+  /* ================= «Subir la web nueva» se detecta solo =================
+     Al empaquetar se publica version.json en la web; el Prompter lo lee y, si la versión publicada es la suya, da la tarea por hecha. */
+  (function(){
+    var PUB={web:null},it=suFind('web-up');
+    if(!it)return;
+    it.ok=function(){return PUB.web?PUB.web===WEBV:undefined};
+    function pubCheck(){
+      var base=String((webCfg().url||'https://what-problem.github.io')).replace(/\/+$/,'');
+      fetch(base+'/version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){
+        if(j&&j.web&&j.web!==PUB.web){PUB.web=String(j.web);try{renderSetup();suBadge();dashRefresh()}catch(e){}}
+      }).catch(function(){});
+    }
+    setTimeout(pubCheck,4000);setInterval(pubCheck,300000);
+  })();
+
   initSupabase();
 })();
 </script>
