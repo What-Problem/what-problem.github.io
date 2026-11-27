@@ -1372,12 +1372,13 @@ function crRulesHtml(n){var fd=crNum('fastDays',30),sd=crNum('slowDays',90),e=cr
 /* arranque */
 window.addEventListener('hashchange',function(){if(location.hash==='#condiciones')openLegal('cond');if(location.hash==='#aviso-legal')openLegal('aviso')});
 saveCart();
+window.WPDIS={ctx:function(){var c=ui.cust,C=colorsOf(c.gar),cc=C[c.color]||C[0],k=edKey();return {garName:GAR[c.gar]||'prenda',color:cc?cc[0]:'',place:k,placeName:PN[k]||'Delante',wa:waLink('Hola 👋 Vengo del Diseñador de la web y me gustaría que me ayudarais.')||'',name:S.name||''}}};
 load().then(function(){S.gars=(S.gars||[]).filter(function(g){return GAR[g]});if(!S.gars.length)S.gars=['tee','sweat','hoodie'];ui.cust.gar=S.gars[0];applyBrand();renderHero();renderGrid();renderCustom();try{draftBanner()}catch(e){}try{renderPromo();renderExtras()}catch(e){}try{renderPuesto()}catch(e){}try{crBoot()}catch(e){console.error(e)}try{var _op=new URLSearchParams(location.search).get('op');if(_op){RV.order=_op.slice(0,20);setTimeout(function(){var o=$('#opiniones');if(o)o.scrollIntoView();rvOpen()},600)}}catch(e){}if(location.hash==='#condiciones')openLegal('cond');if(location.hash==='#aviso-legal')openLegal('aviso');
   if(G.length>1)setInterval(function(){if(ui.hero.touched||document.hidden||$('#heroStage').matches(':hover'))return;ui.hero.i=(ui.hero.i+1)%G.length;renderHero()},6000)});
 
   /* ===== Anotador privado: solo el dueño. Se ve únicamente en un dispositivo donde ha iniciado sesión en el Prompter de esta misma dirección; el público no ve nada, tampoco con #admin. Misma interfaz que el del Prompter. ===== */
   (function(){
-    var KEY='ef.adm',NK='ef.adm.an',VER='9.88',st=null,AN={notes:[],del:{},pos:null,hidden:false,mini:false,ign:{},noted:{},open:{new:true,wait:false,chk:true,done:false}},RAD={errors:[]},U={tab:'notes',f:'all',type:'bug',src:'web',edit:null,redo:null,send:'all',sync:'',ok:0,busy:false,login:false,err:'',open:false},tm=0,DRAG=null,ST=false;
+    var KEY='ef.adm',NK='ef.adm.an',VER='9.90',st=null,AN={notes:[],del:{},pos:null,hidden:false,mini:false,ign:{},noted:{},open:{new:true,wait:false,chk:true,done:false}},RAD={errors:[]},U={tab:'notes',f:'all',type:'bug',src:'web',edit:null,redo:null,send:'all',sync:'',ok:0,busy:false,login:false,err:'',open:false},tm=0,DRAG=null,ST=false;
     try{st=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){}
     try{var a0=JSON.parse(localStorage.getItem(NK)||'null');if(a0&&Array.isArray(a0.notes))AN=Object.assign(AN,a0)}catch(e){}
     if(!EF.url||!EF.key||!EF.owner)return;
@@ -1596,6 +1597,249 @@ window.__web={placement:function(){return wpPlacement.apply(null,arguments)},fon
   document.addEventListener('change',function(e){if(e.target&&e.target.id==='advCtx'){var o=parse();o.ctx=e.target.value.replace(/·/g,',').trim().slice(0,200);write(o)}});
   document.addEventListener('toggle',function(e){if(e.target&&e.target.id==='advBox'&&e.target.open)paint()},true);
   document.addEventListener('input',function(e){if(e.target&&e.target.id==='idea'){var d=document.getElementById('advBox');if(d&&d.open&&!e.isTrusted)return;if(d&&d.open)paint()}});
+})();
+</script>
+<script>
+/* 9.90 · «Diseñador»: asistente guiado (sin servicios externos). Guía por la web, aconseja, averigua el estilo del cliente
+   y prepara la «ficha» de su diseño, que se escribe en la idea del pedido. Nada sale del navegador hasta que se envía el pedido. */
+(function(){
+  var KEY='wp.disenador',HEAD='🎨 Ficha del Diseñador',MAX=600;
+  function ctx(){try{return window.WPDIS.ctx()}catch(e){return {garName:'prenda',color:'',place:'front',placeName:'Delante',wa:'',name:''}}}
+  function $(s){return document.querySelector(s)}
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  function norm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')}
+  function clean(s,n){s=String(s||'').replace(/\s+/g,' ').replace(/[«»]/g,'"').trim();return s.length>n?s.slice(0,n).replace(/\s+\S*$/,''):s}
+
+  /* ---------- estilos de la persona ---------- */
+  var PROF={
+    casual:{n:'Casual',e:'👕',d:'Cómodo y natural: te gusta ir bien sin complicarte.',col:'Blanco, negro, gris o beige.',art:'Ilustración',pal:'Pocos colores',mood:'Tranquilo y cercano',comp:'Forma libre, sin marco',where:'Pecho pequeño (8–10 cm), o delante a unos 20 cm.'},
+    urbano:{n:'Urbano / streetwear',e:'🧢',d:'Con fuerza y personalidad: que se vea.',col:'Negro, gris o blanco; sudadera con capucha.',art:'Urbano / graffiti',pal:'Colores vivos y con contraste',mood:'Atrevido y con energía',comp:'Grande, con mucha presencia',where:'Espalda grande (28–30 cm) y un detalle pequeño en el pecho.'},
+    elegante:{n:'Elegante / minimalista',e:'✨',d:'Menos es más: líneas limpias y buen gusto.',col:'Negro, blanco, beige o azul marino.',art:'Minimalista, de línea fina bien marcada',pal:'Uno o dos colores',mood:'Sereno y sofisticado',comp:'Emblema pequeño y centrado',where:'Pecho pequeño (7–10 cm).'},
+    retro:{n:'Retro / vintage',e:'📼',d:'Con aire de otra época y sabor a recuerdo.',col:'Beige, blanco roto, verde botella o burdeos.',art:'Vintage / retro',pal:'Tonos cálidos y algo apagados',mood:'Nostálgico',comp:'Dentro de un emblema redondo, tipo insignia',where:'Delante a 22–26 cm.'},
+    deporte:{n:'Deportivo',e:'🏅',d:'Dinámico, claro y con movimiento.',col:'Negro, blanco, azul royal o rojo.',art:'Ilustración de trazo dinámico',pal:'Dos o tres colores vivos',mood:'Con energía y movimiento',comp:'Escudo o composición en diagonal',where:'Pecho pequeño delante y nombre o diseño grande detrás.'},
+    rock:{n:'Rock / alternativo',e:'🎸',d:'Con carácter, contraste y un punto rebelde.',col:'Negro, burdeos o gris.',art:'Grabado en tinta, tipo póster de concierto',pal:'Pocos colores muy contrastados',mood:'Rebelde',comp:'Póster vertical',where:'Delante grande (28–30 cm).'},
+    tierno:{n:'Tierno / kawaii',e:'🧸',d:'Dulce, divertido y que saca una sonrisa.',col:'Blanco, rosa, beige o amarillo.',art:'Dibujos animados',pal:'Colores pastel',mood:'Tierno y divertido',comp:'Personaje centrado con contorno marcado',where:'Delante a 18–22 cm.'},
+    aventura:{n:'Naturaleza / aventura',e:'🏔️',d:'Aire libre, calma y ganas de escaparse.',col:'Verde militar, verde botella, beige o azul marino.',art:'Ilustración con aire de póster de viajes',pal:'Tonos tierra y naturales',mood:'Libre y sereno',comp:'Dentro de un emblema redondo, tipo insignia',where:'Pecho pequeño, o espalda a 26–30 cm.'}
+  };
+  var QUIZ=[
+    ['Un día normal, ¿cómo vistes?',[['Cómodo y sencillo',{casual:2}],['Ancho, zapatillas y capucha',{urbano:2}],['Limpio y bien combinado',{elegante:2}],['Prendas con aire de antes',{retro:2}],['Ropa de deporte',{deporte:2}],['Mucho negro y carácter',{rock:2}]]],
+    ['¿Qué colores te llaman más?',[['Negro y oscuros',{rock:1,urbano:1}],['Blanco, beige y neutros',{elegante:1,casual:1}],['Tonos tierra y verdes',{aventura:2,retro:1}],['Vivos y con contraste',{urbano:1,deporte:1}],['Pastel y suaves',{tierno:2}]]],
+    ['Tu plan ideal',[['Montaña, playa o viaje',{aventura:2}],['Entrenar o jugar un partido',{deporte:2}],['Concierto o festival',{rock:2}],['Manta, series y mascotas',{tierno:1,casual:1}],['Mercadillos, vinilos o cine clásico',{retro:2}],['Salir por la ciudad',{urbano:1,elegante:1}]]],
+    ['¿Qué quieres que piense quien lo vea?',[['«Qué buen gusto»',{elegante:2}],['«Qué original»',{retro:1,urbano:1}],['«Qué gracioso, qué mono»',{tierno:2}],['«Tiene carácter»',{rock:2}],['«Va a su aire»',{casual:1,aventura:1}]]]
+  ];
+
+  /* ---------- preguntas de la ficha ---------- */
+  var STEPS=[
+    {k:'sub',req:1,max:150,q:'¿Qué quieres que aparezca en el dibujo? Cuéntamelo con tus palabras: quién o qué es lo principal.',ph:'Ej.: mi perro Toby, un bulldog blanco, patinando',eg:['Mi mascota','Un animal con actitud','Algo de mi pueblo o ciudad','Un recuerdo especial','Mi afición favorita']},
+    {k:'det',max:130,q:'¿Cómo es? Gesto, postura, ropa, objetos que lo acompañan… Cuanto más detalle, mejor sale.',ph:'Ej.: sonriendo, con gorra hacia atrás y un monopatín rojo',skip:'No sé, proponedlo'},
+    {k:'art',q:'¿Cómo te lo imaginas dibujado?',o:['Ilustración','Realista','Dibujos animados','Minimalista','Vintage / retro','Anime / manga','Urbano / graffiti','Acuarela'],rec:'art',free:80},
+    {k:'mood',q:'¿Qué quieres que transmita?',o:['Divertido','Tranquilo y cercano','Atrevido y con energía','Sereno y sofisticado','Nostálgico','Tierno y divertido','Misterioso','Motivador'],rec:'mood',free:60},
+    {k:'pal',q:'¿Y los colores?',o:['Colores vivos y con contraste','Colores pastel','Tonos tierra y naturales','Tonos cálidos y algo apagados','Uno o dos colores','Blanco y negro'],rec:'pal',free:70},
+    {k:'comp',q:'¿Qué forma quieres que tenga el conjunto?',o:['Forma libre, sin marco','Dentro de un emblema redondo, tipo insignia','Emblema pequeño y centrado','Póster vertical','Franja horizontal','Grande, con mucha presencia'],rec:'comp',free:70},
+    {k:'bg',q:'¿Con fondo? Para estampar, casi siempre queda mejor sin fondo: la tela hace de fondo.',o:['Sin fondo (recomendado)','Un fondo sencillo detrás','Una escena completa'],free:80},
+    {k:'text',max:40,q:'¿Lleva alguna palabra o frase dentro del dibujo? Escríbela exactamente como la quieres.',ph:'Ej.: TOBY · desde 2019',skip:'Sin texto'},
+    {k:'font',q:'¿Qué letra te pega para ese texto?',o:['Gruesa y rotunda','Escrita a mano','Clásica y elegante','Retro','De graffiti','La que mejor quede'],if:function(a){return !!a.text}},
+    {k:'no',max:70,q:'¿Hay algo que NO quieras que salga?',ph:'Ej.: sin calaveras, sin color rosa',skip:'Nada en especial'},
+    {k:'size',q:'¿Dónde y a qué tamaño te lo imaginas?',o:['Pequeño en el pecho','Grande delante','Grande en la espalda','Pequeño en la manga','Aconsejadme'],tip:1}
+  ];
+
+  var S0={log:[],view:'home',i:0,a:{},prof:'',qi:0,score:{}},st=load();
+  function load(){try{var d=JSON.parse(localStorage.getItem(KEY)||'null');if(d&&d.a)return {log:[],view:'home',i:d.i||0,a:d.a,prof:PROF[d.prof]?d.prof:'',qi:0,score:{}}}catch(e){}return JSON.parse(JSON.stringify(S0))}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify({a:st.a,prof:st.prof,i:st.i}))}catch(e){}}
+
+  /* ---------- la ficha: se lee como una descripción y a la vez dice todo lo necesario para dibujarla ---------- */
+  function dot(s){s=String(s||'').trim();return s&&!/[.!?…]$/.test(s)?s+'.':s}
+  function build(){var a=st.a,p=PROF[st.prof],det=a.det||'',occ=a.occ||'';
+    function make(){var L=[HEAD,'Quiero: '+dot(a.sub||'')+(det?' '+dot(det.charAt(0).toUpperCase()+det.slice(1)):'')];
+      var aire=p&&norm(a.art||'').indexOf(norm(p.n.split(' ')[0]))<0;
+      L.push(dot('Estilo: '+(a.art||'a vuestro criterio')+(aire?', con aire '+p.n.toLowerCase():''))+(a.mood?' Ambiente: '+dot(a.mood.toLowerCase()):''));
+      L.push((a.pal?'Colores: '+a.pal.toLowerCase():'Colores: los que mejor queden')+'.'+(a.comp?' Forma: '+dot(a.comp.toLowerCase()):''));
+      L.push('Fondo: '+String(a.bg||'Sin fondo').replace(' (recomendado)','').toLowerCase()+'.');
+      L.push(a.text?'Texto: «'+a.text+'», escrito tal cual'+(a.font&&a.font!=='La que mejor quede'?', letra '+a.font.toLowerCase():'')+'.':'Sin texto en el dibujo.');
+      if(a.no)L.push('No quiero: '+dot(a.no));
+      var fin=[];if(occ)fin.push('Es '+occ+'.');if(a.size&&a.size!=='Aconsejadme')fin.push('Pensado: '+a.size.toLowerCase()+'.');if(fin.length)L.push(fin.join(' '));
+      return L.join('\n')}
+    var t=make();
+    if(t.length>MAX&&occ){occ='';t=make()}
+    while(t.length>MAX&&det.length>0){det=det.slice(0,Math.max(0,det.length-(t.length-MAX)-1)).replace(/\s+\S*$/,'');t=make()}
+    return t.slice(0,MAX)}
+
+  /* ---------- ventana ---------- */
+  var CSS='#wpdFab{position:fixed;right:18px;bottom:92px;z-index:41;display:flex;align-items:center;gap:8px;min-height:52px;padding:0 18px 0 14px;border:0;border-radius:999px;background:var(--brand);color:var(--brand-ink);font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 14px 30px -12px rgba(0,0,0,.55)}#wpdFab i{font-style:normal;font-size:22px}'+
+    '#wpdBox{position:fixed;right:18px;bottom:18px;z-index:48;width:min(420px,calc(100vw - 24px));height:min(680px,calc(100vh - 36px));display:none;flex-direction:column;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 70px -20px rgba(0,0,0,.55);overflow:hidden}#wpdBox.on{display:flex}'+
+    '#wpdBox header{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--brand);color:var(--brand-ink)}#wpdBox header div{flex:1;min-width:0}#wpdBox header b{display:block;font-size:17px}#wpdBox header small{display:block;font-size:12px;opacity:.9}#wpdBox header button{border:0;background:rgba(255,255,255,.18);color:inherit;border-radius:12px;min-width:40px;height:40px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;padding:0 10px}'+
+    '#wpdLog{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:9px;overscroll-behavior:contain}#wpdLog>*{flex:none}.wpd-m{max-width:92%;padding:10px 13px;border-radius:16px;font-size:14.5px;line-height:1.45;overflow-wrap:anywhere}.wpd-m.bot{align-self:flex-start;background:var(--paper);border-bottom-left-radius:5px}.wpd-m.me{align-self:flex-end;background:var(--brand);color:var(--brand-ink);border-bottom-right-radius:5px}.wpd-m ul{margin:6px 0 0;padding-left:18px}'+
+    '.wpd-opts{display:flex;flex-wrap:wrap;gap:7px}.wpd-opts button{min-height:42px;text-align:left;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:14px;padding:9px 13px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer}.wpd-opts button:hover,.wpd-opts button:focus-visible{border-color:var(--brand)}.wpd-opts button.main{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}.wpd-opts button.rec{border-color:var(--brand);border-width:2px}.wpd-opts button.wide{width:100%}.wpd-opts button small{display:block;font-weight:500;opacity:.8;font-size:12.5px}'+
+    '.wpd-ficha{align-self:stretch;border:2px dashed var(--brand);border-radius:16px;padding:12px 14px;font-size:14px;line-height:1.55;white-space:pre-line}'+
+    '#wpdForm{display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--line)}#wpdIn{flex:1;min-width:0;border:1.5px solid var(--line);border-radius:14px;padding:11px 12px;font-family:inherit;font-size:16px;background:var(--card);color:var(--ink)}#wpdForm button{border:0;border-radius:14px;background:var(--brand);color:var(--brand-ink);font-family:inherit;font-size:14px;font-weight:800;padding:0 16px;cursor:pointer}'+
+    '.wpd-call{display:flex;gap:10px;align-items:center;width:100%;text-align:left;margin:0 0 12px;padding:12px 14px;border:2px solid var(--brand);border-radius:16px;background:color-mix(in srgb,var(--brand) 8%,transparent);color:var(--ink);font:inherit;cursor:pointer}.wpd-call i{font-style:normal;font-size:26px}.wpd-call b{display:block}.wpd-call small{display:block;color:var(--ink2)}#stepDes.wpd-has #advBox,#stepDes.wpd-has .adv-tip{display:none}'+
+    '@media(max-width:760px){#wpdFab{right:6px;bottom:calc(80px + env(safe-area-inset-bottom));width:62px;height:62px;min-height:0;padding:0;border-radius:50%;flex-direction:column;justify-content:center;gap:2px}#wpdFab i{font-size:21px}#wpdFab span{font-size:10.5px;letter-spacing:-.2px}#wpdBox{left:0;right:0;bottom:0;width:100%;height:92vh;height:92dvh;border-radius:22px 22px 0 0;z-index:49}}';
+
+  var fab,box,log,input,opts=[],ask=null,lastFocus=null;
+  function say(html,who){st.log.push({who:who||'bot',html:html});if(st.log.length>60)st.log.shift()}
+  function me(t){say(esc(t),'me')}
+  function show(list,extra,asking){opts=list||[];ask=asking||null;
+    log.innerHTML=st.log.map(function(m){return '<div class="wpd-m '+m.who+'">'+m.html+'</div>'}).join('')+(extra||'')+
+      '<div class="wpd-opts">'+opts.map(function(o,i){return '<button type="button" data-wpd="'+i+'" class="'+(o.c||'')+'">'+esc(o.t)+(o.s?'<small>'+esc(o.s)+'</small>':'')+'</button>'}).join('')+'</div>';
+    input.placeholder=ask?ask.ph||'Escribe aquí…':'Pregúntame algo (envíos, tallas, precio…)';
+    input.maxLength=ask&&ask.max?ask.max:200;
+    var last=log.querySelectorAll('.wpd-m.bot');var el=last[last.length-1];log.scrollTop=el?Math.max(0,el.offsetTop-log.offsetTop-12):log.scrollHeight}
+  function opt(t,f,c,s){return {t:t,f:f,c:c||'',s:s||''}}
+  function homeBtn(){return opt('🏠 Menú del Diseñador',function(){home(true)})}
+
+  function home(again){st.view='home';
+    if(!again&&!st.log.length)say('¡Hola! Soy el <b>Diseñador</b>'+(ctx().name?' de '+esc(ctx().name):'')+' 👋 Soy un asistente automático: te guío por la página, te aconsejo y te ayudo a contar <b>el dibujo que quieres estampar</b>. Te recomiendo empezar conmigo: así tu idea llega clara y completa.');
+    else say('¿En qué te ayudo?');
+    var L=[opt('🎨 Crear mi diseño conmigo',startDesign,'main wide','Recomendado · unos 3 minutos')];
+    if(st.a.sub)L.push(opt('📋 Ver la ficha que tenía a medias',function(){me('Ver mi ficha');if(st.i<STEPS.length)stepAsk();else summary()},'wide'));
+    L.push(opt('🧭 Descubrir mi estilo',startQuiz,'','Un test corto'),opt('💡 Consejos',tips),opt('🗺️ Guíame por la página',guide),opt('💬 Hablar con una persona',person));
+    show(L)}
+
+  /* ---------- test de estilo ---------- */
+  function startQuiz(){me('Descubrir mi estilo');st.qi=0;st.score={};say('Vamos allá. No hay respuestas malas: elige lo que más se parezca a ti.');quizAsk()}
+  function quizAsk(){var q=QUIZ[st.qi];say('<small>Pregunta '+(st.qi+1)+' de '+QUIZ.length+'</small><br>'+esc(q[0]));
+    show(q[1].map(function(o){return opt(o[0],function(){me(o[0]);for(var k in o[1])st.score[k]=(st.score[k]||0)+o[1][k];st.qi++;if(st.qi<QUIZ.length)quizAsk();else quizEnd()})}).concat([opt('Ya sé mi estilo',pickStyle),homeBtn()]))}
+  function quizEnd(){var r=Object.keys(PROF).sort(function(a,b){return (st.score[b]||0)-(st.score[a]||0)});result(r[0],r[1])}
+  function pickStyle(){me('Ya sé mi estilo');say('¡Perfecto! ¿Cuál se parece más a ti?');show(Object.keys(PROF).map(function(k){return opt(PROF[k].e+' '+PROF[k].n,function(){me(PROF[k].n);result(k)})}).concat([homeBtn()]))}
+  function result(k,k2){var p=PROF[k];st.prof=k;save();
+    say(p.e+' Tu estilo es <b>'+esc(p.n)+'</b>. '+esc(p.d)+'<ul><li><b>Prenda y color:</b> '+esc(p.col)+'</li><li><b>Tipo de dibujo:</b> '+esc(p.art)+'</li><li><b>Colores del dibujo:</b> '+esc(p.pal.toLowerCase())+'</li><li><b>Dónde queda mejor:</b> '+esc(p.where)+'</li></ul>'+(k2&&st.score[k2]?'También tienes un punto <b>'+esc(PROF[k2].n.toLowerCase())+'</b>.':''));
+    show([opt('🎨 Crear un diseño con mi estilo',startDesign,'main wide','Marcaré con ⭐ lo que mejor te va'),opt('Cambiar de estilo',pickStyle),homeBtn()])}
+
+  /* ---------- crear la ficha ---------- */
+  function startDesign(){me('Crear mi diseño');
+    if(st.a.sub){say('Tienes una ficha empezada. ¿Seguimos o empezamos otra?');return show([opt('Seguir con ella',function(){me('Seguir');if(st.i<STEPS.length)stepAsk();else summary()},'main'),opt('Empezar de cero',function(){me('Empezar de cero');st.a={};st.i=0;save();occAsk()}),homeBtn()])}
+    if(st.a.occ){st.i=0;return stepAsk()}st.a={};st.i=0;occAsk()}
+  function occAsk(){say('¡Genial! Te haré preguntas cortas y al final tendrás la <b>ficha de tu diseño</b>. Puedes saltar lo que no sepas.<br><br>Primero: ¿para quién es?');
+    var L=[['Para mí','para mí'],['Es un regalo','un regalo'],['Para un grupo o equipo','para un grupo o equipo'],['Para mi negocio','para mi negocio'],['Para una celebración','para una celebración']];
+    show(L.map(function(o){return opt(o[0],function(){me(o[0]);st.a.occ=o[1];save();if(!st.prof)styleAsk();else stepAsk()})}).concat([homeBtn()]))}
+  function styleAsk(){say('¿Tienes claro tu estilo? Así te aconsejo mejor.');
+    show(Object.keys(PROF).map(function(k){return opt(PROF[k].e+' '+PROF[k].n,function(){me(PROF[k].n);st.prof=k;save();stepAsk()})}).concat([opt('🧭 No lo sé: hazme el test',startQuiz,'wide'),opt('Prefiero seguir sin estilo',function(){me('Seguir sin estilo');stepAsk()},'wide')]))}
+  function applies(s){return !s.if||s.if(st.a)}
+  function nextStep(){var cur=STEPS[st.i];
+    if(st.editing){if(cur&&cur.k==='text'&&st.a.text&&!st.a.font){st.i++;save();return stepAsk()}st.editing=false;return summary()}
+    st.i++;while(st.i<STEPS.length&&!applies(STEPS[st.i]))st.i++;save();if(st.i<STEPS.length)stepAsk();else summary()}
+  function answer(s,v){st.a[s.k]=v;if(s.k==='text'&&!v)delete st.a.font;nextStep()}
+  function stepAsk(){while(st.i<STEPS.length&&!applies(STEPS[st.i]))st.i++;var s=STEPS[st.i];if(!s)return summary();st.view='step';
+    var vis=STEPS.filter(applies),p=PROF[st.prof],rec=s.rec&&p?p[s.rec]:'';
+    var tip='';if(s.tip)tip='<br><small>Consejo: pequeño en el pecho mide 8–10 cm; grande delante o detrás, 25–30 cm. El máximo es 30 × 38 cm.'+(p?' Para tu estilo: '+esc(p.where):'')+'</small>';
+    say('<small>Paso '+(vis.indexOf(s)+1)+' de '+vis.length+'</small><br>'+esc(s.q)+tip);
+    var L=[],list=(s.o||[]).slice();
+    if(rec&&list.indexOf(rec)<0)list.unshift(rec);
+    if(rec)list.sort(function(a,b){return (b===rec)-(a===rec)});
+    list.forEach(function(v){L.push(opt((v===rec?'⭐ ':'')+v,function(){me(v);answer(s,v)},v===rec?'rec':''))});
+    if(s.eg)s.eg.forEach(function(v){L.push(opt(v,function(){input.value=v+': ';input.focus()}))});
+    if(s.skip)L.push(opt(s.skip,function(){me(s.skip);answer(s,'')}));
+    else if(s.o&&!s.tip&&s.k!=='bg'&&s.k!=='font')L.push(opt('No lo sé: elige tú',function(){me('Elige tú');answer(s,rec||'')}));
+    if(st.i>0&&!st.editing)L.push(opt('← Atrás',function(){do{st.i--}while(st.i>0&&!applies(STEPS[st.i]));stepAsk()}));
+    L.push(homeBtn());
+    var free=s.max||s.free;
+    show(L,'',free?{max:free,ph:s.ph||'O escríbelo con tus palabras…',send:function(t){var v=clean(t,free);if(s.req&&v.length<3){me(t);say('Cuéntame un poco más para poder dibujarlo 🙂');return stepAsk()}me(v);answer(s,v)}}:null)}
+
+  function advice(){var a=st.a,c=ctx(),L=[],col=norm(c.color),pal=norm(a.pal);
+    if(a.bg&&!/sin fondo/i.test(a.bg))L.push('Un fondo ocupa más tinta y se nota más sobre la tela. Si dudas, déjalo sin fondo.');
+    if(/negro|marino|burdeos|botella|militar/.test(col)&&/blanco y negro/.test(pal))L.push('Sobre una prenda oscura, el blanco y negro queda mejor con el blanco como protagonista.');
+    if(/blanco|beige|amarillo/.test(col)&&/pastel/.test(pal))L.push('Pastel sobre prenda clara se ve suave: pediremos un contorno que lo separe.');
+    if(a.size==='Pequeño en el pecho'||a.size==='Pequeño en la manga'){if((a.sub+' '+(a.det||'')).length>150||a.bg==='Una escena completa')L.push('En pequeño los detalles se pierden: mejor una versión sencilla, o llévalo grande.')}
+    if(a.text&&a.text.length>24)L.push('Las frases largas se leen peor: si puedes, acórtala.');
+    if(/nike|adidas|disney|marvel|pokemon|barca|real madrid|mickey|logo de|escudo del/.test(norm(a.sub+' '+(a.det||'')+' '+(a.text||''))))L.push('Ojo: no estampamos marcas, escudos ni personajes con derechos. Podemos crear algo original con ese aire.');
+    return L}
+  function summary(){st.view='done';st.i=STEPS.length;st.editing=false;save();var t=build(),av=advice(),c=ctx();
+    say('¡Lista! Esta es la <b>ficha de tu diseño</b>. Léela: si todo está como quieres, la añado a tu pedido. Con ella preparamos el dibujo y <b>te lo enseñamos antes de estamparlo</b>.'+(av.length?'<ul>'+av.map(function(x){return '<li>💡 '+esc(x)+'</li>'}).join('')+'</ul>':''));
+    show([opt('✅ Usar en mi pedido',apply,'main wide','Va a «'+(c.placeName||'Delante')+'» de tu '+String(c.garName||'prenda').toLowerCase()+(c.color?' '+c.color.toLowerCase():'')),opt('✏️ Cambiar algo',change),opt('📄 Copiar la ficha',function(){copy(t)}),opt('🗑️ Empezar otra',function(){me('Empezar otra');st.a={};st.i=0;save();occAsk()}),homeBtn()],'<div class="wpd-ficha">'+esc(t)+'</div>')}
+  function change(){me('Cambiar algo');say('¿Qué quieres cambiar?');var N={sub:'Lo principal',det:'Detalles',art:'Tipo de dibujo',mood:'Ambiente',pal:'Colores',comp:'Forma',bg:'Fondo',text:'Texto',font:'Letra',no:'Lo que no quiero',size:'Sitio y tamaño'};
+    show(STEPS.filter(applies).map(function(s){return opt(N[s.k],function(){me(N[s.k]);st.editing=true;st.i=STEPS.indexOf(s);stepAsk()})}).concat([opt('Mi estilo',function(){me('Mi estilo');say('Elige estilo:');show(Object.keys(PROF).map(function(k){return opt(PROF[k].e+' '+PROF[k].n,function(){me(PROF[k].n);st.prof=k;save();summary()})}))}),opt('Volver a la ficha',summary)]))}
+  function copy(t){function ok(){say('Copiada ✔ Puedes guardarla o mandárnosla por WhatsApp.');summaryButtons(t)}
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(ok,function(){say('No he podido copiarla sola. Mantén el dedo sobre el texto de la ficha para copiarlo.');summaryButtons(t)});else{say('Mantén el dedo sobre el texto de la ficha para copiarlo.');summaryButtons(t)}}
+  function summaryButtons(t){show([opt('✅ Usar en mi pedido',apply,'main wide'),opt('✏️ Cambiar algo',change),homeBtn()],'<div class="wpd-ficha">'+esc(t)+'</div>')}
+
+  /* escribe la ficha en «Describe tu idea» (el campo que viaja con el pedido) sin borrar nada sin permiso */
+  function apply(){var ta=$('#idea');if(!ta){say('No encuentro el personalizador. Baja a «Haz tu look» e inténtalo de nuevo.');return show([homeBtn()])}
+    var old=ta.value.trim(),t=build();
+    if(old&&old.indexOf(HEAD)!==0&&old!==t){say('Ya tenías una idea escrita en esta cara:<br><i>'+esc(old.slice(0,200))+(old.length>200?'…':'')+'</i><br>¿La sustituyo por la ficha?');
+      return show([opt('Sí, sustituirla',function(){me('Sustituir');put(t)},'main'),opt('No, dejar la mía',function(){me('Dejar la mía');summary()})])}
+    put(t)}
+  function put(t){var go=$('#wzSteps [data-wzgo="2"]');if(go)go.click();
+    setTimeout(function(){var ta=$('#idea');ta.value=t;ta.rows=Math.min(12,Math.max(5,t.split('\n').length+3));ta.dispatchEvent(new Event('input',{bubbles:true}));mark();
+      say('✅ Hecho: la ficha ya está en tu diseño. Ahora sigue con <b>«Colocar»</b> para ponerlo donde quieras y elige la talla.<br><small>Lo que ves sobre la prenda es una muestra de posición, no el dibujo final. Si quieres otro dibujo en otra cara, selecciónala y vuelve a pedírmelo.</small>');
+      show([opt('➡️ Ir a colocarlo',function(){close();var b=$('#wzSteps [data-wzgo="3"]');if(b)b.click();var n=$('#wzSteps');if(n)n.scrollIntoView({block:'start'})},'main wide'),opt('Ver cómo ha quedado escrito',function(){close();var x=$('#idea');if(x)x.scrollIntoView({block:'center'})}),homeBtn()])},60)}
+  function mark(){var ta=$('#idea'),p=$('#stepDes');if(ta&&p)p.classList.toggle('wpd-has',ta.value.indexOf(HEAD)===0)}
+
+  /* ---------- consejos y guía ---------- */
+  var TIPS=[
+    ['🖼️ Qué dibujo queda mejor','Los dibujos <b>sin fondo</b>, con contornos claros y buen contraste con la tela son los que mejor quedan. Evita líneas finísimas, letras diminutas y brillos o humos muy difuminados: al estampar pierden fuerza.'],
+    ['📸 Si traes tu foto','Manda la <b>original</b>, no una captura de pantalla. Si te llegó por WhatsApp, pide que te la envíen como <b>documento</b>. La web te avisa si va a verse borrosa.'],
+    ['🎨 Combinar colores','En prenda <b>oscura</b> lucen los blancos y colores vivos. En prenda <b>clara</b>, los tonos intensos y el negro. Dos o tres colores principales suelen verse más limpios que muchos.'],
+    ['📏 Sitio y tamaño','Pecho pequeño: 8–10 cm. Delante o espalda grande: 25–30 cm. Manga: hasta 10 cm. El máximo es 30 × 38 cm. Mover el diseño no cambia el precio; agrandarlo más de lo normal sí.'],
+    ['🎁 Si es un regalo','Un nombre, una fecha o un detalle que solo vosotros entendáis hace mucho. Pide la talla con disimulo: mide una prenda suya que le quede bien.']
+  ];
+  function tips(){me('Consejos');say('¿Sobre qué quieres consejo?');show(TIPS.map(function(x){return opt(x[0],function(){me(x[0]);say(x[1]);tipsAgain()})}).concat([opt('🧭 Sobre mi estilo',startQuiz),homeBtn()]))}
+  function tipsAgain(){show([opt('Otro consejo',tips),opt('🎨 Crear mi diseño',startDesign,'main'),homeBtn()])}
+  var PLACES=[
+    ['👕 Crear mi prenda','#personaliza','Cuatro pasos: <b>prenda</b>, <b>diseño</b>, <b>colocar</b> y <b>talla</b>. Al final la añades a «Mi pedido».'],
+    ['🛍️ Diseños ya hechos','#disenos','Aquí están los diseños publicados. Toca uno para verlo y pedirlo.'],
+    ['❓ Cómo funciona','#como','Aquí tienes el proceso paso a paso.'],
+    ['⭐ Gana puntos','#gana-puntos','Si el diseño es tuyo, puedes sumar puntos con él. Aquí se explica.'],
+    ['🧩 Extras','#extras','Detalles extra para completar tu pedido.'],
+    ['💬 Opiniones','#opiniones','Lo que cuentan otros clientes.'],
+    ['🙋 Dudas rápidas','#dudas','Envíos, plazos, pagos y más.']
+  ];
+  function visible(sel){var e=$(sel);return !!e&&!e.hidden&&getComputedStyle(e).display!=='none'}
+  function goTo(sel){var e=$(sel);if(!e)return;if(window.innerWidth<=760)close();e.scrollIntoView({behavior:'smooth',block:'start'})}
+  function guide(){me('Guíame por la página');say('Dime dónde quieres ir y te llevo.');
+    show(PLACES.filter(function(p){return visible(p[1])}).map(function(p){return opt(p[0],function(){me(p[0]);say(p[2]);goTo(p[1]);guideAgain()})}).concat([opt('🛒 Mi pedido',function(){close();var b=$('#cartBtn');if(b)b.click()}),homeBtn()]))}
+  function guideAgain(){show([opt('Ir a otro sitio',guide),opt('🎨 Crear mi diseño',startDesign,'main'),homeBtn()])}
+  function person(){me('Hablar con una persona');var w=ctx().wa;
+    if(!w){say('Escríbenos desde el apartado de contacto, al final de la página.');return show([homeBtn()])}
+    say('Claro. Escríbenos por WhatsApp y te contestamos.'+(st.a.sub?' Si quieres, antes copia tu ficha y pégala en el chat.':''));
+    var L=[opt('Abrir WhatsApp',function(){window.open(w,'_blank','noopener')},'main')];if(st.a.sub)L.push(opt('📄 Copiar mi ficha',function(){copy(build())}));L.push(homeBtn());show(L)}
+
+  /* preguntas escritas: se responde con las «Dudas rápidas» de la propia web (lo que está publicado), nunca inventando */
+  var WORDS={envio:['envio','enviar','envias','enviais','envian','portes','recoger','recogida','a casa'],plazo:['plazo','tarda','cuando llega','cuando estara','dias'],pago:['pago','paga','pagar','bizum','tarjeta','efectivo','transferencia'],devol:['devol','reembolso','equivoc'],talla:['talla','medidas'],precio:['precio','cuesta','cuestan','vale','valen','cuanto es'],lavado:['lavar','lava','lavo','lavado','lavadora'],prueba:['ver antes','ver el diseno','prueba'],foto:['foto','imagen','calidad','borrosa'],puntos:['punto','premio','creador']};
+  var FAQQ={plazo:/tarda|plazo/,pago:/pago|pagar/,devol:/talla|devol/,lavado:/lavo|lavar|lavado/,prueba:/antes|prueba/};
+  function faq(topic){var re=FAQQ[topic];if(!re)return '';var d=[].slice.call(document.querySelectorAll('#faq details')).filter(function(x){return re.test(norm((x.querySelector('summary')||{}).textContent))})[0];
+    return d?'<b>'+esc(d.querySelector('summary').textContent)+'</b><br>'+esc(d.querySelector('p').textContent):''}
+  function freeQ(t){me(t);var q=norm(t),found=Object.keys(WORDS).filter(function(k){return WORDS[k].some(function(x){return q.indexOf(x)>-1})});
+    var k=found[0];
+    if(/quiero (un|una|el|la)\b|(crear|hacer|disenar).*(disen|dibujo|imagen|camiseta|sudadera)/.test(q)){say('¡Vamos a ello! Te ayudo a contarlo bien.');return show([opt('🎨 Crear mi diseño',startDesign,'main'),homeBtn()])}
+    if(/estilo|aconsej|consejo|recomiend/.test(q)){say('Con un test corto te digo qué estilo te va y qué dibujo, colores y tamaño te recomiendo.');return show([opt('🧭 Descubrir mi estilo',startQuiz,'main'),opt('💡 Ver consejos',tips),homeBtn()])}
+    if(k==='puntos'&&visible('#gana-puntos')){say(PLACES[3][2]);return show([opt('Llévame',function(){goTo('#gana-puntos')},'main'),homeBtn()])}
+    if(k==='envio'){say('La forma de entrega la eliges en <b>«Mi pedido»</b>: allí ves las opciones y lo que cuestan antes de enviar nada.'+(faq('plazo')?'<br><br>'+faq('plazo'):''));return show([opt('🛒 Ver mi pedido',function(){close();var b=$('#cartBtn');if(b)b.click()}),opt('💬 Hablar con una persona',person),homeBtn()])}
+    if(k==='precio'){say('El precio exacto sale mientras creas tu prenda: depende de la prenda, de las caras con diseño y del tamaño.');return show([opt('👕 Ir a crear',function(){goTo('#personaliza')},'main'),homeBtn()])}
+    var ans='';found.some(function(f){ans=faq(f);if(ans)k=f;return !!ans});
+    if(ans){say(ans);return show([opt('Ver todas las dudas',function(){goTo('#dudas')}),opt('💬 Hablar con una persona',person),homeBtn()])}
+    if(k==='foto'){say(TIPS[1][1]);return tipsAgain()}
+    if(k==='talla'){say('La talla se elige en el último paso. Si dudas, mide a lo ancho una prenda que te quede bien y escríbenos esa medida.');return show([opt('💬 Preguntar por WhatsApp',person),homeBtn()])}
+    say('Eso no lo sé con seguridad y prefiero no inventármelo. Puedo ayudarte con tu diseño, con consejos o llevarte a una parte de la web. Para lo demás, mejor una persona.');
+    show([opt('🎨 Crear mi diseño',startDesign,'main'),opt('🗺️ Guíame',guide),opt('💬 Hablar con una persona',person),homeBtn()])}
+
+  function open(go){lastFocus=document.activeElement;box.classList.add('on');fab.style.display='none';
+    if(go==='design')startDesign();else if(!st.log.length)home();else if(!opts.length)home(true);
+    box.focus()}
+  function close(){box.classList.remove('on');fab.style.display='';place();if(lastFocus&&lastFocus.focus)try{lastFocus.focus({preventScroll:true})}catch(e){}}
+  /* el botón no tapa la barra del precio ni se queda encima de las ventanas */
+  function place(){if(!fab)return;var bar=$('#wzBar'),b='';
+    if(bar){var r=bar.getBoundingClientRect(),h=window.innerHeight;if(r.height&&r.top<h-20&&r.bottom>h-170)b=Math.round(h-r.top+10)+'px'}
+    fab.style.bottom=b;
+    var wz=(($('#personaliza .custom')||{}).dataset||{}).wz;fab.style.visibility=b&&window.innerWidth<=760&&(wz==='3'||wz==='4')?'hidden':''}
+
+  function init(){if($('#wpdFab'))return;
+    var s=document.createElement('style');s.textContent=CSS;document.head.appendChild(s);
+    fab=document.createElement('button');fab.type='button';fab.id='wpdFab';fab.setAttribute('aria-haspopup','dialog');fab.setAttribute('aria-label','Abrir el Diseñador, tu asistente');fab.innerHTML='<i aria-hidden="true">🎨</i><span>Diseñador</span>';document.body.appendChild(fab);
+    box=document.createElement('section');box.id='wpdBox';box.tabIndex=-1;box.setAttribute('role','dialog');box.setAttribute('aria-label','Diseñador, tu asistente');
+    box.innerHTML='<header><span aria-hidden="true" style="font-size:24px">🎨</span><div><b>Diseñador</b><small>Asistente automático · te guía y te aconseja</small></div><button type="button" data-wpdhome aria-label="Menú del Diseñador">Menú</button><button type="button" data-wpdclose aria-label="Cerrar el Diseñador">✕</button></header><div id="wpdLog" aria-live="polite"></div><form id="wpdForm" autocomplete="off"><input id="wpdIn" aria-label="Escribe al Diseñador"><button type="submit">Enviar</button></form>';
+    document.body.appendChild(box);log=box.querySelector('#wpdLog');input=box.querySelector('#wpdIn');
+    fab.addEventListener('click',function(){open()});
+    box.addEventListener('click',function(e){var t=e.target.closest('button');if(!t)return;
+      if(t.hasAttribute('data-wpdclose'))return close();if(t.hasAttribute('data-wpdhome'))return home(true);
+      if(t.hasAttribute('data-wpd')){var o=opts[+t.getAttribute('data-wpd')];if(o)o.f()}});
+    box.querySelector('#wpdForm').addEventListener('submit',function(e){e.preventDefault();var t=input.value.trim();if(!t)return;input.value='';if(ask)ask.send(t);else freeQ(t)});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape'&&box.classList.contains('on'))close()});
+    var dr=$('#drop'),tabs=$('#desTabs');if(tabs){var c=document.createElement('button');c.type='button';c.className='wpd-call';c.innerHTML='<i aria-hidden="true">🎨</i><span><b>¿Te ayuda el Diseñador? <small style="display:inline">(recomendado)</small></b><small>Te hace preguntas sencillas y deja tu idea clara y completa.</small></span>';c.addEventListener('click',function(){open('design')});tabs.parentNode.insertBefore(c,tabs)}
+    document.addEventListener('input',function(e){if(e.target&&e.target.id==='idea')mark()});
+    document.addEventListener('click',function(){setTimeout(function(){mark();place()},80)});
+    var tick=0;window.addEventListener('scroll',function(){if(!tick)tick=requestAnimationFrame(function(){tick=0;place()})},{passive:true});window.addEventListener('resize',place);
+    setTimeout(function(){mark();place()},1500)}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 </script>
 </body>
