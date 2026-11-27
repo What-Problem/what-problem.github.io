@@ -1128,7 +1128,7 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&$('#rvDlg')
    anuncia (portada, menú y sección «Gana puntos»). Comprar sigue sin cuenta:
    Google solo se usa para ofrecer un diseño y ver «Mis puntos». Los puntos y las reglas los manda el servidor;
    aquí solo se enseñan. La sesión de creador usa su propia clave (no toca la del Prompter). */
-var CRK='wp.creator',CRV='wp.creator.pkce',CRP='wp.creator.popup';
+var CRK='wp.creator',CRV='wp.creator.pkce',CRP='wp.creator.popup',CRW='wp.crea.wa';
 var CR={me:null,subs:[],pts:[],loaded:false,loading:false,err:'',open:false,busy:false,msg:'',view:false,face:'',jobs:[],f:crBlank()};
 function crBlank(){return {net:'instagram',handle:'',link:'',phone:'',age:'',gn:'',gc:'',r:false,p:false,title:'',own:false,rules:false}}
 function crCfg(){return S.creators||{}}
@@ -1186,6 +1186,20 @@ function crPaintAll(){crPaint();if(CR.view)crRenderMine()}
 /* ── interruptor en «Talla» (apagado de partida) ── */
 function crFaces(){var c=ui.cust,des=Object.assign({},c.designs||{});des[edKey()]=liveDes();var pl=placesOf(c.places||{front:true});return {des:des,list:pl.filter(function(k){var d=des[k];return d&&(d.photoUrl||(d.text||'').trim())})}}
 function crErr(){return (CR.msg?'<p class="err" role="alert">'+esc(CR.msg)+'</p>':'')}
+/* pedido hecho por WhatsApp con un dibujo propio: el asistente manda el enlace #sumar=CÓDIGO.CLAVE (vale 30 días) */
+function crWa(){try{var w=JSON.parse(localStorage.getItem(CRW)||'null');return w&&w.code&&w.token&&Date.now()-w.at<30*864e5?w:null}catch(e){return null}}
+function crWaHash(){var m=/^#sumar=([A-Za-z0-9-]{4,24})\.([a-f0-9]{24,64})$/.exec(location.hash);if(!m)return false;try{localStorage.setItem(CRW,JSON.stringify({code:m[1],token:m[2],at:Date.now()}));history.replaceState(null,'',location.pathname+'#mis-puntos')}catch(e){}return true}
+function crWaIntro(){var w=crWa();return w?'<div class="cr-box cr-wa"><b>⭐ Sumar puntos con tu diseño</b><p class="note" style="margin:6px 0 0">El dibujo de tu pedido <b>'+esc(w.code)+'</b> por WhatsApp. Si lo aprobamos, lo publicamos con tu nombre de artista y ganas puntos cada vez que otra persona lo compre.</p></div>':''}
+function crWaHtml(){var w=crWa();if(!w)return '';if(!crOn())return '<p class="note">El programa de creadores no está abierto ahora mismo.</p>';if(CR.me&&CR.me.blocked)return '<p class="err">Tu cuenta de artista está en pausa. Escríbenos por WhatsApp.</p>';
+  return '<div class="cr-box cr-wa"><b>⭐ Tu diseño del pedido '+esc(w.code)+'</b><p class="note" style="margin:6px 0">El dibujo que nos mandaste por WhatsApp. Saldrá como <b>@'+esc(CR.me.handle)+'</b> si lo aprobamos.</p>'+
+    crInput('title','Nombre de tu diseño','maxlength="60" placeholder="Ej.: Gato astronauta"')+
+    crCheck('own','El diseño es mío: lo he hecho yo y no usa marcas, personajes, famosos ni imágenes de otras personas.')+
+    crCheck('rules','Quiero que se publique para que otros lo compren. Doy permiso para venderlo y enseñarlo con mi nombre de artista, según las '+crRulesLink()+'.')+
+    (CR.wmsg?'<p class="err" role="alert">'+esc(CR.wmsg)+'</p>':'')+'<button type="button" class="btn block" data-crwa'+(CR.busy?' disabled':'')+' style="margin-top:10px">'+(CR.busy?'Enviando…':'Enviar para revisión')+'</button> <button type="button" class="rm" data-crwadrop>Ahora no</button></div>'}
+function crWaSend(){var w=crWa(),f=CR.f;if(!w||CR.busy)return;CR.wmsg=!f.title.trim()?'Ponle un nombre a tu diseño':!(f.own&&f.rules)?'Marca las dos casillas':'';if(CR.wmsg){crRenderMine();return}
+  CR.busy=true;crRenderMine();
+  crRpc('ef_creator_submit_wa',{p_title:f.title.trim().slice(0,60),p_order_code:w.code,p_token:w.token,p_own:true,p_rules:true}).then(function(){CR.busy=false;CR.wmsg='';try{localStorage.removeItem(CRW)}catch(x){}f.title='';f.own=false;f.rules=false;say('¡Enviado! Lo revisamos y te avisamos');CR.loaded=false;return crLoad(true)},
+    function(e){CR.busy=false;CR.wmsg=e.message||'sin conexión';if(/ya está enviado/.test(CR.wmsg)){try{localStorage.removeItem(CRW)}catch(x){}}crRenderMine()})}
 function crCheck(k,html){return '<label class="check"><input type="checkbox" data-crf="'+k+'"'+(CR.f[k]?' checked':'')+'><span>'+html+'</span></label>'}
 function crInput(k,label,attrs){return '<label class="f">'+label+'<input class="t" data-crf="'+k+'" value="'+esc(CR.f[k])+'" '+(attrs||'')+'></label>'}
 function crRulesLink(){return '<a href="#normas-creadores" data-legal="creadores">normas de creadores</a>'}
@@ -1264,14 +1278,15 @@ function crPrizes(bal){var show=crFigures(),P=show?crCfg().prizes||{}:{},ks=Obje
   var wa=waLink('Hola 👋 Soy @'+(CR.me?CR.me.handle:'')+'. Tengo '+bal+' puntos de artista y quiero canjearlos.');
   if(wa&&bal>0&&!(CR.me&&CR.me.blocked))h+='<a class="btn wa block" target="_blank" rel="noopener" href="'+esc(wa)+'">Pedir mi premio por WhatsApp</a>';return h}
 function crMineHtml(){var s=crSess(),top='<button class="x" data-close aria-label="Cerrar">×</button><div class="cart cr-mine" style="max-width:640px;margin:0 auto"><h2>Mis puntos</h2>',foot='<p class="note"><a href="#normas-creadores" data-legal="creadores">Normas de creadores</a> · <a href="privacidad.html#creadores" target="_blank">Privacidad</a></p></div>';
-  if(!s)return top+'<p>Entra para ver tus puntos y tus diseños.</p>'+crLoginHtml()+foot;
+  if(!s)return top+(crWa()&&crOn()?crWaIntro()+'<p>Entra con Google para continuar (tarda un minuto).</p>':'<p>Entra para ver tus puntos y tus diseños.</p>')+crLoginHtml()+foot;
   var out='<p class="note">Has entrado como '+esc(s.email)+' · <button type="button" class="rm" data-crlogout>Salir</button></p>';
   if(CR.err)return top+out+'<p class="err">'+esc(CR.err)+'</p><button type="button" class="btn alt" data-crretry>Reintentar</button>'+foot;
   if(!CR.loaded)return top+out+'<p class="note">Cargando…</p>'+foot;
+  if(!CR.me&&crWa()&&crOn())return top+out+crWaIntro()+crProfileHtml()+foot;
   if(!CR.me)return top+out+(crOn()?'<p>Todavía no eres artista de la tienda. Crea tu diseño y, en el paso «Talla», activa <b>Sumar puntos</b> antes de pedirlo.</p><a class="btn block" href="#personaliza" data-close data-go="#personaliza">Crear un diseño</a>':'<p>El programa de creadores no está abierto ahora mismo.</p>')+foot;
   if(CR.view==='edit')return top+out+crProfileHtml()+'<button type="button" class="rm" data-crback>‹ Volver</button>'+foot;
   var bal=crBalance();
-  return top+out+(CR.jobs.length?'<div class="cr-jobs">'+crJobsHtml()+'</div>':'')+'<div class="cr-bal"><small>@'+esc(CR.me.handle)+'</small><b>'+bal+'</b><span>puntos</span></div>'+
+  return top+out+crWaHtml()+(CR.jobs.length?'<div class="cr-jobs">'+crJobsHtml()+'</div>':'')+'<div class="cr-bal"><small>@'+esc(CR.me.handle)+'</small><b>'+bal+'</b><span>puntos</span></div>'+
     (CR.me.age_band==='teen'&&!CR.me.guardian_ok_at?'<p class="note">⏳ Falta confirmar el permiso del adulto. Escribiremos o llamaremos a '+esc(CR.me.guardian_name)+' antes de publicar o dar un premio.</p>':'')+
     crPrizes(bal)+
     '<div class="lbl">Mis diseños</div>'+(CR.subs.length?'<ul class="cr-list">'+CR.subs.map(function(x){return '<li><span><b>'+esc(x.title)+'</b><small>'+(CRST[x.status]||'')+' · '+crDate(x.created_at)+(x.status==='rejected'&&x.reason?' · Motivo: '+esc(x.reason):'')+'</small></span>'+(x.status==='pending'||x.status==='approved'||x.status==='published'?'<button type="button" class="rm" data-crwithdraw="'+esc(x.id)+'">Retirar</button>':'')+'</li>'}).join('')+'</ul>':'<p class="note">Aún no has enviado ninguno.</p>')+
@@ -1280,7 +1295,9 @@ function crMineHtml(){var s=crSess(),top='<button class="x" data-close aria-labe
 function crRenderMine(){var sh=$('#sheet');if(!sh)return;if($('#dlg').classList.contains('open')&&!sh.querySelector('.cr-mine'))return;var top=sh.scrollTop;sh.innerHTML=crMineHtml();sh.scrollTop=top}
 function crFill(){if(!CR.me)return;var f=CR.f;f.net=CR.me.network;f.handle='@'+CR.me.handle;f.link=CR.me.link||'';f.phone=CR.me.phone;f.age=CR.me.age_band;f.gn=CR.me.guardian_name;f.gc=CR.me.guardian_contact;f.r=false;f.p=false}
 function crAct(p,ok){CR.busy=true;CR.msg='';p.then(function(){CR.busy=false;say(ok);return crLoad(true)},function(e){CR.busy=false;CR.msg=e.message;crPaintAll()})}
-document.addEventListener('click',function(e){var t=e.target.closest&&e.target.closest('[data-crlogin],[data-crage],[data-crnet],[data-crsave],[data-crface],[data-crjob],[data-crdrop],[data-croff],[data-crartist],[data-crretry],[data-crmine],[data-crlogout],[data-crwithdraw],[data-credit],[data-crback],[data-crdelete],[data-close]');if(!t)return;var d=t.dataset;
+document.addEventListener('click',function(e){var t=e.target.closest&&e.target.closest('[data-crlogin],[data-crage],[data-crnet],[data-crsave],[data-crface],[data-crjob],[data-crdrop],[data-croff],[data-crartist],[data-crretry],[data-crmine],[data-crlogout],[data-crwithdraw],[data-credit],[data-crback],[data-crdelete],[data-crwa],[data-crwadrop],[data-close]');if(!t)return;var d=t.dataset;
+  if(d.crwa!=null){crWaSend();return}
+  if(d.crwadrop!=null){try{localStorage.removeItem(CRW)}catch(x){}CR.wmsg='';crRenderMine();return}
   if(d.close!=null){CR.view=false;return}
   if(d.crmine!=null){e.preventDefault();try{moreClose()}catch(x){}crShow();return}
   if(d.crlogin!=null){crSignIn();return}
@@ -1302,8 +1319,8 @@ document.addEventListener('input',function(e){var t=e.target,k=t.dataset&&t.data
 document.addEventListener('change',function(e){var t=e.target;if(!t.dataset)return;if(t.dataset.crf&&t.type==='checkbox'){CR.f[t.dataset.crf]=t.checked;return}
   if(t.dataset.crtoggle!=null){CR.open=t.checked;CR.msg='';crPaint();if(CR.open&&crSess())crLoad(true)}});
 window.addEventListener('storage',function(e){if(e.key!==CRK)return;CR.loaded=false;CR.err='';if(!crSess()){CR.me=null;CR.subs=[];CR.pts=[]}crPaintAll();crLoad(true)});
-window.addEventListener('hashchange',function(){if(location.hash==='#mis-puntos')crShow();if(location.hash==='#normas-creadores'&&crOn())openLegal('creadores')});
-function crBoot(){crLoadJobs();var back=crReturn();crPaint();crAd();
+window.addEventListener('hashchange',function(){if(crWaHash()){crShow();return}if(location.hash==='#mis-puntos')crShow();if(location.hash==='#normas-creadores'&&crOn())openLegal('creadores')});
+function crBoot(){crLoadJobs();var wah=crWaHash(),back=crReturn();crPaint();crAd();if(wah&&!back)crShow();
   if(crOn()||crSess()){var fl=$('#footLinks');if(fl&&!fl.querySelector('[data-crmine]'))fl.insertAdjacentHTML('beforeend','<a href="#mis-puntos" data-crmine>Mis puntos</a>'+(crOn()?'<a href="#normas-creadores" data-legal="creadores">Normas de creadores</a>':''))}
   if(!back&&location.hash==='#mis-puntos')crShow();if(crOn()&&location.hash==='#normas-creadores')openLegal('creadores');
   if(location.hash==='#gana-puntos'){var go=function(){var s=document.getElementById('gana-puntos');if(s&&location.hash==='#gana-puntos')s.scrollIntoView({behavior:'instant'})};setTimeout(go,300);setTimeout(go,1500)}}
@@ -1344,7 +1361,7 @@ document.addEventListener('click',function(e){if(!e.target.closest)return;if(e.t
 function crRulesHtml(n){var fd=crNum('fastDays',30),sd=crNum('slowDays',90),e=crOn()&&crFigures()?crNum('eurPer100',8):0;
   return '<h2>Programa de creadores</h2><p>Cuando pides una prenda con tu propio diseño en <b>'+n+'</b>, puedes marcar «Sumar puntos» para que lo publiquemos en la galería. Si lo aprobamos, otras personas podrán comprarlo y tú ganas puntos, con los que puedes llegar a conseguir prendas gratis o descuentos.</p>'+
   '<h3>1. Quién puede participar</h3><p>Personas a partir de 14 años. De 14 a 17 años hace falta el permiso de un adulto responsable (padre, madre o tutor): lo confirmamos antes de publicar un diseño y antes del primer premio. Se entra con una cuenta de Google. Para comprar no hace falta cuenta.</p>'+
-  '<h3>2. Tus diseños</h3><p>Solo puedes ofrecer un diseño que hayas pedido en la web, marcando «Sumar puntos» al hacer el pedido. Tienes que haberlo hecho tú. No admitimos marcas, personajes, famosos, fotos de otras personas ni contenido ofensivo. Podemos no aceptar un diseño, o retirarlo, y te diremos el motivo cuando no lo aceptemos. Enviarlo no obliga a publicarlo.</p>'+
+  '<h3>2. Tus diseños</h3><p>Solo puedes ofrecer un diseño que hayas pedido en la web (marcando «Sumar puntos» al hacer el pedido) o por WhatsApp (con el enlace que te manda el asistente al terminar el pedido). Tienes que haberlo hecho tú. No admitimos marcas, personajes, famosos, fotos de otras personas ni contenido ofensivo. Podemos no aceptar un diseño, o retirarlo, y te diremos el motivo cuando no lo aceptemos. Enviarlo no obliga a publicarlo.</p>'+
   '<h3>3. De quién es el diseño</h3><p>Sigue siendo tuyo. Nos das permiso, sin exclusividad, para vender prendas con él y enseñarlo en nuestra tienda con nuestra marca de agua, junto a tu nombre de artista y la red o el enlace que elijas (Instagram, TikTok, YouTube u otra página), que revisamos antes de publicarlo. Puedes retirarlo cuando quieras desde «Mis puntos»: deja de venderse y conservas los puntos ya confirmados. Los pedidos hechos antes de retirarlo se entregan.</p>'+
   '<h3>4. Cómo se ganan puntos</h3><p>Por cada prenda con tu diseño que compre otra persona: <b>los euros pagados por esa prenda</b> (sin envío y ya con los descuentos) multiplicados por un número que depende de lo que haya tardado en venderse. Se cuenta desde la venta anterior de ese diseño (en la primera, desde que se publicó):</p><ul><li>Hasta '+fd+' días: <b>× '+crDec(crNum('fFast',1.25))+'</b></li><li>De '+(fd+1)+' a '+sd+' días: <b>× '+crDec(crNum('fNormal',1))+'</b></li><li>Más de '+sd+' días: <b>× '+crDec(crNum('fSlow',.75))+'</b></li></ul><p>Se redondea al número entero más cercano. Si una prenda lleva varios diseños, el importe se reparte entre ellos. Los puntos se confirman cuando el pedido está pagado, entregado y han pasado al menos 14 días. Tus propias compras no puntúan. Si un pedido se devuelve o se anula, sus puntos se restan.</p>'+
   '<h3>5. Premios</h3><p>Puedes canjear tus puntos por una prenda gratis (con un diseño estándar en una cara; el envío, las caras de más y el tamaño de más se pagan aparte)'+(e>0?' o por descuento (100 puntos = '+eur(e)+')':' o por un descuento')+'. Cuántos puntos cuesta cada premio se muestra en «Mis puntos» cuando está fijado; mientras, pregúntanos por WhatsApp. No se cambian por dinero, no se pueden pasar a otra persona y caducan tras 12 meses sin actividad (sin ganar ni canjear puntos y sin enviar diseños).</p>'+
@@ -1358,7 +1375,7 @@ load().then(function(){S.gars=(S.gars||[]).filter(function(g){return GAR[g]});if
 
   /* ===== Anotador privado: solo el dueño. Se ve únicamente en un dispositivo donde ha iniciado sesión en el Prompter de esta misma dirección; el público no ve nada, tampoco con #admin. Misma interfaz que el del Prompter. ===== */
   (function(){
-    var KEY='ef.adm',NK='ef.adm.an',VER='9.84',st=null,AN={notes:[],del:{},pos:null,hidden:false,mini:false,ign:{},noted:{},open:{new:true,wait:false,chk:true,done:false}},RAD={errors:[]},U={tab:'notes',f:'all',type:'bug',src:'web',edit:null,redo:null,send:'all',sync:'',ok:0,busy:false,login:false,err:'',open:false},tm=0,DRAG=null,ST=false;
+    var KEY='ef.adm',NK='ef.adm.an',VER='9.86',st=null,AN={notes:[],del:{},pos:null,hidden:false,mini:false,ign:{},noted:{},open:{new:true,wait:false,chk:true,done:false}},RAD={errors:[]},U={tab:'notes',f:'all',type:'bug',src:'web',edit:null,redo:null,send:'all',sync:'',ok:0,busy:false,login:false,err:'',open:false},tm=0,DRAG=null,ST=false;
     try{st=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){}
     try{var a0=JSON.parse(localStorage.getItem(NK)||'null');if(a0&&Array.isArray(a0.notes))AN=Object.assign(AN,a0)}catch(e){}
     if(!EF.url||!EF.key||!EF.owner)return;
