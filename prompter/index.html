@@ -10900,4 +10900,120 @@ localStorage.removeItem('prompter.preReset');say('Deshecho: todo vuelve a estar 
 })();
 </script>
 <div id="printArea"></div>
+
+<style id="wp-workspace-theme">
+html.wp-workspace {
+  --workspace-border:var(--line);
+  --workspace-panel:var(--surface);
+  --workspace-secondary:var(--muted);
+}
+.wp-workspace:not(.wp-classic) #spaces,.wp-workspace:not(.wp-classic) #nav {display:none!important}
+#wp-workspace {margin:14px 0 20px;color:var(--fg);background:var(--workspace-panel);border:1px solid var(--workspace-border);border-radius:18px;box-shadow:0 12px 30px -27px var(--fg);overflow:hidden}
+#wp-workspace .workspace-top {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;padding:17px 20px 13px}
+#wp-workspace .workspace-brand {display:flex;align-items:center;gap:11px}
+#wp-workspace .workspace-mark {display:grid;place-items:center;width:36px;height:36px;background:var(--accent);color:var(--accent-fg);border-radius:10px;font-weight:750}
+#wp-workspace strong {display:block;font-family:var(--font-display);font-size:18px;line-height:1.2}
+#wp-workspace small {display:block;color:var(--workspace-secondary);margin-top:3px}
+#wp-workspace button {color:inherit;font:inherit;cursor:pointer}
+#wp-workspace .workspace-switch {border:1px solid var(--workspace-border);background:transparent;border-radius:9px;padding:6px 11px;min-height:44px}
+#wp-workspace .workspace-groups {display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;padding:0 12px}
+#wp-workspace .workspace-group {white-space:nowrap;text-align:center;min-height:44px;border:0;border-radius:9px 9px 0 0;background:transparent;padding:8px 4px;font-weight:650;border-bottom:3px solid transparent}
+#wp-workspace .workspace-group[aria-pressed=true] {background:var(--accent-soft);color:var(--accent);border-bottom-color:var(--accent)}
+#wp-workspace .workspace-tools {display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px;border-top:1px solid var(--workspace-border)}
+#wp-workspace .workspace-tool {border:1px solid var(--workspace-border);min-height:44px;border-radius:9px;background:transparent;padding:7px 11px}
+#wp-workspace button:hover {background:var(--accent-soft)}
+#wp-workspace button[aria-current=page] {border-color:var(--accent);color:var(--accent);background:var(--accent-soft);font-weight:650}
+#wp-workspace button:focus-visible {outline:2px solid var(--accent);outline-offset:2px}
+#wp-workspace .workspace-summary {color:var(--workspace-secondary);padding:0 14px 12px;margin:0;font-size:13px}
+.wp-workspace main[data-view=home] .blk {border-radius:15px}
+@media(max-width:640px) {
+  #wp-workspace {margin:8px 0 14px;border-radius:13px}
+  #wp-workspace .workspace-top {padding:11px 12px;gap:8px}
+  #wp-workspace .workspace-groups {grid-template-columns:repeat(3,minmax(0,1fr));padding:0 8px 6px}
+  #wp-workspace .workspace-group {border-radius:7px}
+}
+@media print {#wp-workspace{display:none!important}}
+</style>
+<script id="wp-workspace-navigation">
+(function(){
+  var host=document.querySelector('#spaces'), original=document.querySelector('#nav');
+  if(!host||!original)return;
+  var groups=[
+    ['Hoy','Avisos y tareas que requieren atención.',[['home','Panel del día'],['setup','Puesta a punto']]],
+    ['Pedidos','Atención, prueba y seguimiento de cada pedido.',[['web','Pedidos online','orders'],['chats','Chats de WhatsApp'],['corders','Pedidos de clientes'],['orders','Pedidos de producción']]],
+    ['Diseños','Crea, revisa y organiza los diseños de la marca.',[['gen','Nuevo encargo'],['lib','Biblioteca'],['col','Colecciones'],['proj','Proyectos y packaging'],['sets','Camisetas completas'],['pmodes','Tipos de prompt'],['lab','Laboratorio'],['adn','ADN de marca'],['plan','Plan de marca']]],
+    ['Taller','Prepara los archivos, el material y la fabricación.',[['works','Fabricación'],['prod','Preparar archivo','prep'],['prod','Probador','sim'],['prod','Comprobar archivo','check'],['dtf','Montar lámina DTF'],['purch','Compras DTF'],['lots','Transfers'],['gang','Hoja por unidades'],['stock','Stock de prendas'],['taller','Prendas y pruebas'],['buy','Recomendaciones de compra'],['cfg','Ajustes de producción']]],
+    ['Tienda','Gestiona lo que ve el cliente y lo que se publica.',[['web','Página web','start'],['web','Datos y entrega','data'],['web','Precios y prendas','brands'],['web','Galería','designs'],['web','Bot de WhatsApp','wa'],['cat','Fichas de catálogo'],['shop9','Catálogo y rentabilidad']]],
+    ['Negocio','Costes, ventas y administración.',[['money','Gastos y compras'],['sales','Ventas e incidencias'],['growth','Campañas'],['data','Datos y copias'],['later','Más tarde']]]
+  ];
+  var shell=document.createElement('section');
+  shell.id='wp-workspace';
+  shell.setAttribute('aria-label','Navegación del Prompter');
+  shell.innerHTML='<div class="workspace-top"><div class="workspace-brand"><span class="workspace-mark" aria-hidden="true">WP</span><div><strong>Prompter</strong><small>Espacios de trabajo</small></div></div><button type="button" class="workspace-switch" aria-pressed="false">Menú clásico</button></div><div class="workspace-groups" role="group" aria-label="Áreas de trabajo"></div><div class="workspace-tools" role="group" aria-label="Tareas del área"></div><p class="workspace-summary"></p>';
+  host.before(shell);
+  var groupRail=shell.querySelector('.workspace-groups'), tools=shell.querySelector('.workspace-tools');
+  var summary=shell.querySelector('.workspace-summary'), toggle=shell.querySelector('.workspace-switch');
+  var activeGroup=0;
+  function button(text,cls){
+    var el=document.createElement('button');
+    el.type='button';el.className=cls;el.textContent=text;return el;
+  }
+  function findItem(route,detail){
+    var matches=Array.from(original.querySelectorAll('[data-nav="'+route+'"]'));
+    if(route==='prod')return matches.find(function(el){return el.dataset.pt===detail});
+    return matches.find(function(el){return !el.dataset.later})||matches[0];
+  }
+  function active(route,detail){
+    var current=original.querySelector('[data-nav][aria-selected="true"]');
+    if(!current||current.dataset.nav!==route)return false;
+    if(route==='prod')return current.dataset.pt===detail;
+    if(route==='web')return Boolean(document.querySelector('#webBox [data-wtab="'+detail+'"].on, #webBox [data-wtab="'+detail+'"][aria-selected="true"]'));
+    return true;
+  }
+  function sync(){
+    Array.from(tools.children).forEach(function(el,i){
+      var item=groups[activeGroup][2][i];
+      if(active(item[0],item[2]))el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');
+    });
+  }
+  function renderGroup(i){
+    activeGroup=i;
+    Array.from(groupRail.children).forEach(function(el,j){el.setAttribute('aria-pressed',String(i===j))});
+    summary.textContent=groups[i][1];
+    tools.replaceChildren();
+    groups[i][2].forEach(function(item){
+      var route=item[0],el=button(item[1],'workspace-tool'),detail=item[2];
+      el.addEventListener('click',function(){
+        var target=findItem(route,detail);
+        if(!target)return;
+        target.click();
+        if(route==='web'){
+          var tab=document.querySelector('#webBox [data-wtab="'+detail+'"]');
+          if(tab)tab.click();
+        }
+        sync();
+      });
+      tools.append(el);
+    });
+    sync();
+  }
+  groups.forEach(function(group,i){
+    var el=button(group[0],'workspace-group');
+    el.addEventListener('click',function(){renderGroup(i)});
+    groupRail.append(el);
+  });
+  toggle.addEventListener('click',function(){
+    var classic=document.documentElement.classList.toggle('wp-classic');
+    toggle.setAttribute('aria-pressed',String(classic));
+    toggle.textContent=classic?'Usar menú por tareas':'Menú clásico';
+    groupRail.hidden=tools.hidden=summary.hidden=classic;
+  });
+  var observer=new MutationObserver(sync);
+  observer.observe(original,{subtree:true,attributes:true,attributeFilter:['aria-selected']});
+  var web=document.getElementById('webBox');
+  if(web)observer.observe(web,{subtree:true,childList:true});
+  renderGroup(0);
+  document.documentElement.classList.add('wp-workspace');
+})();
+</script>
 </body></html>
