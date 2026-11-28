@@ -1,6 +1,6 @@
 /* Prompter · service worker: se abre desde el icono del móvil aunque falle la cobertura.
    Primero internet (versión nueva); si no hay conexión, la última copia guardada. */
-const V = 'wp-prompter-10.8-menu.3';
+const V = 'wp-prompter-10.9-menu.3';
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', e => e.waitUntil(
   caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('wp-prompter-') && k !== V).map(k => caches.delete(k)))).then(() => self.clients.claim())));
