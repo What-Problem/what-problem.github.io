@@ -797,7 +797,15 @@ header.top nav .cr-nav{order:5}
 
 <style id="nf-art-style">
 .nf-art{margin:18px 0;padding:16px;border:1px solid var(--line);border-radius:18px;background:color-mix(in srgb,var(--brand) 7%,var(--card));color:var(--ink)}
-#nfArtPublicProfile{border-inline-start:5px solid var(--brand)}#nfArtPublicProfile[data-art-accent=burdeos]{border-inline-start-color:#a7446e}#nfArtPublicProfile[data-art-accent=crema]{border-inline-start-color:#c5a36b}#nfArtPublicProfile[data-art-accent=verde]{border-inline-start-color:#628c54}#nfArtPublicProfile[data-art-accent=azul]{border-inline-start-color:#527dce}#nfArtPublicProfile[data-art-type=editorial] h3{font-family:Georgia,serif}#nfArtPublicProfile[data-art-type=taller] h3{font-family:monospace}#nfArtProfile{margin-top:18px}
+.nf-art[data-art-accent]{--art-accent:var(--brand);border-block-start:4px solid var(--art-accent);background:color-mix(in srgb,var(--art-accent) 12%,var(--card))}
+.nf-art[data-art-accent=burdeos]{--art-accent:#a7446e}.nf-art[data-art-accent=crema]{--art-accent:#c5a36b}.nf-art[data-art-accent=verde]{--art-accent:#628c54}.nf-art[data-art-accent=azul]{--art-accent:#527dce}
+.nf-art[data-art-type=editorial] :is(h3,h4){font-family:Georgia,serif}.nf-art[data-art-type=taller] :is(h3,h4){font-family:monospace}
+.nf-art[data-art-accent] .nf-art-work{border-color:color-mix(in srgb,var(--art-accent) 55%,var(--line))}
+#nfArtProfile{margin-top:18px}
+.nf-art-profile-settings{display:grid;gap:16px}
+@media(min-width:800px){.nf-art-profile-settings{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}}
+.nf-art-profile-preview{min-width:0;margin:0}.nf-art-profile-preview small{color:var(--ink2)}
+.nf-art-bio{white-space:pre-wrap;overflow-wrap:anywhere}.nf-art-profile-id{overflow-wrap:anywhere}
 .nf-art[hidden]{display:none}
 .nf-art h3{margin:0 0 7px;font-size:clamp(20px,3vw,28px);letter-spacing:-.03em}
 .nf-art details{max-width:730px}
@@ -1641,7 +1649,9 @@ function artCatalogLoad(){
   rest(url).then(function(rows){
     if(!Array.isArray(rows)||!rows.length)return;
     NF_ART.works=rows;artHighlight();box.hidden=false;
-    box.innerHTML='<h3>Obras hechas a mano</h3><div class="grid">'+rows.map(function(x){
+    var worksLink=$('[data-art-profile-works]');if(worksLink)worksLink.hidden=false;
+    if(handle)artProfileTheme(box,rows[0].ef_art_profiles?.public_data||{});
+    box.innerHTML='<h3>'+(handle?'Diseños propios de este artista':'Obras hechas a mano')+'</h3><div class="grid">'+rows.map(function(x){
       var p=x.ef_art_profiles||{},choices=x.choices||[],nombre=(p.public_data||{}).display_name||('@'+(p.handle||''));
       return '<article class="card nf-art-work"><img class="nf-artwork" src="'+esc(x.artwork)+'" alt="" loading="lazy">'+
         '<div><h4>'+esc(x.title)+'</h4><a href="?taller='+encodeURIComponent(p.handle)+'#disenos">Por '+esc(nombre)+'</a>'+
@@ -1705,6 +1715,17 @@ function artAdd(work,c,v,boton){
 }
 function artEnCesta(){return cart.reduce(function(t,i){return t+(i.kind==='art'?i.unit*i.qty:0)},0)}
 
+function artProfileTheme(box,p){
+  box.dataset.artAccent=['violeta','burdeos','crema','verde','azul'].includes(p.accent)?p.accent:'violeta';
+  box.dataset.artType=['orbita','editorial','taller'].includes(p.typography)?p.typography:'orbita';
+}
+function artProfileHeader(p){
+  return (p.cover?'<img class="nf-art-cover" alt="" src="'+esc(p.cover)+'">':'')+
+    (p.avatar?'<img class="nf-art-avatar" alt="" src="'+esc(p.avatar)+'">':'')+
+    '<h3>'+esc(p.display_name||'Tu nombre artístico')+'</h3>'+
+    (p.handle?'<p class="nf-art-profile-id">@'+esc(p.handle)+'</p>':'')+
+    (p.bio?'<p class="nf-art-bio">'+esc(p.bio)+'</p>':'');
+}
 async function artProfileForm(){
   var box=$('#nfArtProfile'),session=crSess();
   if(!box||!session)return;
@@ -1713,14 +1734,29 @@ async function artProfileForm(){
     var existing=identity&&(await crApi('/rest/v1/ef_art_profiles?select=*&id=eq.'+encodeURIComponent(identity.profile_id)))[0];
     if((crSess()||{}).uid!==session.uid||!box.isConnected)return;
     var p=existing||{},choices=function(values,selected){return values.map(function(v){return '<option'+(v===selected?' selected':'')+'>'+esc(v)+'</option>'}).join('')};
-    box.innerHTML='<form id="nfArtProfileForm"><h4>Tu perfil de artista</h4><label class="f">Portada<input class="t" type="file" name="cover" accept="image/jpeg,image/png,image/webp"></label><label class="f">Avatar<input class="t" type="file" name="avatar" accept="image/jpeg,image/png,image/webp"></label><label class="f">Usuario público<input class="t" name="handle" required pattern="[a-z0-9][a-z0-9_\\-]{2,29}" maxlength="30" value="'+esc(p.handle||'')+'"'+(existing?' disabled':'')+'></label>'+
+    box.innerHTML='<h3>Personaliza tu perfil de artista</h3><p>Este será tu espacio público. Elige cómo presentarte y qué aspecto tendrá tu galería de obras aprobadas.</p><div class="nf-art-profile-settings"><form id="nfArtProfileForm"><label class="f">Portada<input class="t" type="file" name="cover" accept="image/jpeg,image/png,image/webp"></label><label class="f">Avatar<input class="t" type="file" name="avatar" accept="image/jpeg,image/png,image/webp"></label><label class="f">Usuario público<input class="t" name="handle" required pattern="[a-z0-9][a-z0-9_\\-]{2,29}" maxlength="30" value="'+esc(p.handle||'')+'"'+(existing?' disabled':'')+'></label>'+
       '<label class="f">Nombre artístico<input class="t" name="display_name" required maxlength="70" value="'+esc(p.display_name||'')+'"></label>'+
       '<label class="f">Sobre ti<textarea class="t" name="bio" maxlength="600">'+esc(p.bio||'')+'</textarea></label>'+
       '<label class="f">Portafolio<input class="t" name="portfolio" type="url" maxlength="300" value="'+esc(p.portfolio||'')+'"></label>'+
       '<label class="f">Color<select class="t" name="accent">'+choices(['violeta','burdeos','crema','verde','azul'],p.accent)+'</select></label>'+
       '<label class="f">Tipografía<select class="t" name="typography">'+choices(['orbita','editorial','taller'],p.typography)+'</select></label>'+
       (p.published?'<a class="chip" href="?taller='+encodeURIComponent(p.handle)+'#disenos">Ver perfil público</a>':'<p class="note">El taller decide cuándo se publica.</p>')+(p.published?'<p class="note">Los cambios que guardes se verán cuando el taller los apruebe.</p>':'')+
-      '<p role="status" class="note" data-art-profile-status></p><button class="btn" type="submit">Guardar perfil</button></form>';
+      '<p role="status" class="note" data-art-profile-status></p><button class="btn" type="submit">Guardar perfil</button></form><aside class="nf-art nf-art-profile-preview" aria-label="Vista previa del perfil"><small>Vista previa de tu perfil</small><div data-art-profile-preview></div></aside></div>';
+    var form=box.querySelector('form'),preview=box.querySelector('.nf-art-profile-preview'),previewImages={cover:p.cover,avatar:p.avatar},imageRevision=0;
+    function paintProfile(){
+      var f=form.elements,draft=Object.assign({},previewImages);
+      ['display_name','handle','bio','accent','typography'].forEach(function(k){draft[k]=f[k].value.trim()});
+      artProfileTheme(preview,draft);preview.querySelector('[data-art-profile-preview]').innerHTML=artProfileHeader(draft);
+    }
+    form.addEventListener('change',function(e){
+      if(e.target.type!=='file')return;
+      var f=form.elements,rev=++imageRevision;
+      Promise.all([artProfileImage(f.cover.files[0],1280,380000),artProfileImage(f.avatar.files[0],320,90000)]).then(function(images){
+        if(rev!==imageRevision||!preview.isConnected)return;
+        previewImages={cover:images[0]||p.cover,avatar:images[1]||p.avatar};paintProfile();
+      }).catch(function(err){if(rev===imageRevision&&preview.isConnected)form.querySelector('[data-art-profile-status]').textContent=err.message});
+    });
+    form.addEventListener('input',paintProfile);paintProfile();
     $('#nfArtProfileForm').addEventListener('submit',async function(e){
       e.preventDefault();var f=e.target,button=f.querySelector('[type=submit]'),status=f.querySelector('[data-art-profile-status]');
       if(button.disabled||(crSess()||{}).uid!==session.uid)return;
@@ -1747,9 +1783,11 @@ function artPublicProfile(){
   if(!box||!handle||!/^[a-z0-9][a-z0-9_-]{2,29}$/.test(handle))return;
   rest('ef_art_profiles?select=handle,public_data&published=eq.true&handle=eq.'+encodeURIComponent(handle)).then(function(rows){
     var p=rows[0]&&rows[0].public_data&&Object.assign({bio:'',portfolio:'',cover:'',avatar:''},rows[0].public_data,{handle:rows[0].handle});if(!p||!p.display_name)return;
-    box.hidden=false;box.setAttribute('data-art-accent',p.accent);box.setAttribute('data-art-type',p.typography);
-    box.innerHTML=(p.cover?'<img class="nf-art-cover" alt="" src="'+esc(p.cover)+'">':'')+(p.avatar?'<img class="nf-art-avatar" alt="" src="'+esc(p.avatar)+'">':'')+'<small>Arte hecho a mano</small><h3>'+esc(p.display_name)+'</h3><p>@'+esc(p.handle)+'</p>'+
-      (p.bio?'<p>'+esc(p.bio)+'</p>':'')+(/^https:\/\//i.test(p.portfolio)?'<a class="chip" href="'+esc(p.portfolio)+'" target="_blank" rel="noopener noreferrer">Ver portafolio</a>':'');
+    box.hidden=false;artProfileTheme(box,p);
+    box.innerHTML='<small>Arte hecho a mano</small>'+artProfileHeader(p)+
+      (/^https:\/\//i.test(p.portfolio)?'<a class="chip" href="'+esc(p.portfolio)+'" target="_blank" rel="noopener noreferrer">Ver portafolio</a>':'')+
+      ' <a class="chip" href="#nfArtCatalog" data-art-profile-works hidden>Ver sus diseños</a>';
+    box.querySelector('[data-art-profile-works]').hidden=$('#nfArtCatalog').hidden;
   }).catch(function(){});
 }
 
@@ -2589,7 +2627,7 @@ load().then(function(){S.gars=(S.gars||[]).filter(function(g){return GAR[g]});if
 
   /* ===== Anotador privado: solo el dueño. Se ve únicamente en un dispositivo donde ha iniciado sesión en el Prompter de esta misma dirección; el público no ve nada, tampoco con #admin. Misma interfaz que el del Prompter. ===== */
   (function(){
-    var KEY='ef.adm',NK='ef.adm.an',VER='10.14',st=null,AN={notes:[],del:{},pos:null,hidden:false,mini:false,ign:{},noted:{},open:{new:true,wait:false,chk:true,done:false}},RAD={errors:[]},U={tab:'notes',f:'all',type:'bug',src:'web',edit:null,redo:null,send:'all',sync:'',ok:0,busy:false,login:false,err:'',open:false},tm=0,DRAG=null,ST=false;
+    var KEY='ef.adm',NK='ef.adm.an',VER='10.15',st=null,AN={notes:[],del:{},pos:null,hidden:false,mini:false,ign:{},noted:{},open:{new:true,wait:false,chk:true,done:false}},RAD={errors:[]},U={tab:'notes',f:'all',type:'bug',src:'web',edit:null,redo:null,send:'all',sync:'',ok:0,busy:false,login:false,err:'',open:false},tm=0,DRAG=null,ST=false;
     try{st=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){}
     try{var a0=JSON.parse(localStorage.getItem(NK)||'null');if(a0&&Array.isArray(a0.notes))AN=Object.assign(AN,a0)}catch(e){}
     if(!EF.url||!EF.key||!EF.owner)return;
