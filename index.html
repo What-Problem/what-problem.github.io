@@ -504,7 +504,7 @@ footer .fcol>b,footer .fcol summary{color:#fff!important}
 main>.hero .nf-galeria{display:flex!important;flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:0;margin:8px 0;padding:0;border:1.5px solid #7a55ff;border-radius:14px;background:#14152ad9;max-width:560px;overflow:hidden}
 main>.hero .nf-galeria a{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:center;min-height:40px;padding:7px 11px;color:#fff;text-decoration:none;font-size:13.5px;line-height:1.35}
 main>.hero .nf-galeria a i{font-style:normal;font-size:17px}main>.hero .nf-galeria em{font-style:normal;opacity:.75}
-main>.hero .nf-galeria a.nf-puntos{border-top:1px solid #7a55ff66;background:#e5ff4214}main>.hero .nf-galeria a.nf-puntos b{color:#e5ff42}
+main>.hero .nf-galeria a.nf-artista{border-top:1px solid #7a55ff66;background:#7a55ff2e}main>.hero .nf-galeria a.nf-artista b{color:#d3c5ff}main>.hero .nf-galeria a.nf-puntos{border-top:1px solid #7a55ff66;background:#e5ff4214}main>.hero .nf-galeria a.nf-puntos b{color:#e5ff42}
 main>.hero .wrap .wp10-pack{grid-column:1/-1;max-width:760px}
 main>.hero .wrap .wp11-como{grid-column:1/-1;color:#e5ff42;text-align:left}
 #homeGars .wp9-hd{position:absolute;left:10px;right:8px;bottom:26px;font-size:11px;line-height:1.2;color:#cfcbe3;text-align:left;pointer-events:none}
@@ -684,7 +684,7 @@ header.top .cartb{background:transparent;color:#fff;border-color:#ffffff4a}
   main>.hero .nf-intro{min-height:clamp(270px,69vw,425px);padding-top:20px;background:linear-gradient(90deg,#0b0b13 1%,#0b0b13df 39%,transparent 83%)}
   main>.hero .nf-hero-art{height:calc(clamp(270px,69vw,425px) + 70px)}
   main>.hero .nf-hero-art img{object-position:92% center}
-  main>.hero #heroTitle{font-size:clamp(40px,11.3vw,77px)!important}
+  main>.hero #heroTitle{font-size:clamp(35px,10vw,70px)!important}
   main>.hero #heroLead,main>.hero .wz-ways,main>.hero .trust{max-width:59%}
   main>.hero .wz-ways{gap:4px 8px}
   main>.hero .wz-ways .wz-way:not([hidden]){min-height:29px}
@@ -834,7 +834,7 @@ header.top nav .cr-nav{order:5}
 <main>
 <section class="hero"><div class="wrap">
   <div class="nf-intro">
-    <h1 id="heroTitle">Haz tu <span class="mark">look</span>,</h1>
+    <h1 id="heroTitle">¡Hazte tu <span class="mark">look</span><br>propio,</h1>
     <p class="lead" id="heroLead">Camisetas, sudaderas, gorros, pantalones… a tu estilo, a tu medida y donde tú quieras. Si no lo tienes claro, te aconsejamos. Lo preparamos nosotros y te avisamos por WhatsApp.</p>
     <div class="ctas wz-ways"><a class="wz-way main" href="#personaliza"><i aria-hidden="true">✏️</i><span><b>Quiero crear mi look</b><small>Con tu foto, texto o idea</small></span></a><a class="wz-way" href="#disenos"><i aria-hidden="true">👕</i><span><b>Ver diseños</b><small>Míralos puestos y pídelos</small></span></a><a class="wz-way" id="wayHelp" target="_blank" rel="noopener" hidden><i aria-hidden="true">💬</i><span><b>No lo tengo claro</b><small>Te ayudamos por WhatsApp</small></span></a></div>
     <div class="trust" id="trust"></div>
@@ -2565,7 +2565,7 @@ load().then(function(){S.gars=(S.gars||[]).filter(function(g){return GAR[g]});if
 
   /* ===== Anotador privado: solo el dueño. Se ve únicamente en un dispositivo donde ha iniciado sesión en el Prompter de esta misma dirección; el público no ve nada, tampoco con #admin. Misma interfaz que el del Prompter. ===== */
   (function(){
-    var KEY='ef.adm',NK='ef.adm.an',VER='10.12',st=null,AN={notes:[],del:{},pos:null,hidden:false,mini:false,ign:{},noted:{},open:{new:true,wait:false,chk:true,done:false}},RAD={errors:[]},U={tab:'notes',f:'all',type:'bug',src:'web',edit:null,redo:null,send:'all',sync:'',ok:0,busy:false,login:false,err:'',open:false},tm=0,DRAG=null,ST=false;
+    var KEY='ef.adm',NK='ef.adm.an',VER='10.13',st=null,AN={notes:[],del:{},pos:null,hidden:false,mini:false,ign:{},noted:{},open:{new:true,wait:false,chk:true,done:false}},RAD={errors:[]},U={tab:'notes',f:'all',type:'bug',src:'web',edit:null,redo:null,send:'all',sync:'',ok:0,busy:false,login:false,err:'',open:false},tm=0,DRAG=null,ST=false;
     try{st=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){}
     try{var a0=JSON.parse(localStorage.getItem(NK)||'null');if(a0&&Array.isArray(a0.notes))AN=Object.assign(AN,a0)}catch(e){}
     if(!EF.url||!EF.key||!EF.owner)return;
@@ -3487,14 +3487,16 @@ window.__web={placement:function(){return wpPlacement.apply(null,arguments)},fon
         '<p class="note">Precios orientativos con una imagen por prenda a tamaño normal. Te confirmamos el total antes de fabricar.</p></div>'}
     var nav=$('header.top nav');if(nav&&!nav.querySelector('a[data-sec="pack"]')){var ref=nav.querySelector('a[data-sec="disenos"]');if(ref)ref.insertAdjacentElement('beforebegin',nodo('<a href="#pack" data-sec="pack">Pack −'+I.pct+' %</a>'))}
     var hp=$('.hero .wp10-pack');if(hp&&!$('.hero .wp11-como'))hp.insertAdjacentElement('afterend',nodo('<a class="wp11-como" href="#pack">Cómo funciona el pack y cuánto ahorras ›</a>'))}
+  function avisoArtista(){var u=window.WPDIS.waLink('Hola 👋 Soy artista, tengo diseños propios y quiero publicarlos y darlos a conocer con vosotros');
+    return u?'<a class="nf-artista" target="_blank" rel="noopener" href="'+u.replace(/"/g,'%22')+'"><i aria-hidden="true">🎨</i><span><b>¿Eres artista de diseños propios?</b> ¡Ponte en contacto con nosotros para publicarte y darte publicidad! ›</span></a>':''}
   /* bajo el titular: la galería es nuestra y de los clientes que se apuntan a los puntos con su cuenta de Google */
   function galeriaInicio(){var lead=document.getElementById('heroLead'),I=window.WPDIS;if(!lead||!I||!I.galeria)return;var X=I.galeria();
     var a=document.getElementById('heroGaleria');if(!a){a=nodo('<div id="heroGaleria" class="nf-galeria"></div>');lead.insertAdjacentElement('afterend',a)}
     var h1=document.getElementById('heroTitle'),o=document.getElementById('heroO');if(h1&&!o){o=nodo('<a id="heroO" class="nf-hero-o" href="#disenos"></a>');h1.insertAdjacentElement('afterend',o)}
-    if(o){var frase=X.clientes?'elige uno nuestro, o de alguien que se sumó a los puntos':'elige uno de los nuestros';if(o.textContent!==frase)o.textContent=frase}
+    if(o){var frase=X.clientes?'elige uno nuestro, de alguien que se sumó al sistema de puntos o artistas propios!':'elige uno nuestro o de artistas propios!';if(o.textContent!==frase)o.textContent=frase}
     var vias=document.querySelector('.hero .wz-ways');if(vias&&vias.nextElementSibling!==a)vias.insertAdjacentElement('afterend',a);
     despejaFoto();
-    var html='<a href="#disenos"><i aria-hidden="true">🖼️</i><span><b>Diseños propios de NEW FILE</b> en la galería'+(X.clientes?' y también <b>diseños de otras personas</b> que se han sumado al sistema de puntos':'')+(X.total?'':' <em>(la estamos estrenando)</em>')+'</span></a>'+(X.clientes?'<a class="nf-puntos" href="#gana-puntos"><i aria-hidden="true">⭐</i><span><b>¿Quieres que esté el tuyo?</b> Súmate a los puntos con tu cuenta de Google ›</span></a>':'');
+    var html='<a href="#disenos"><i aria-hidden="true">🖼️</i><span><b>Diseños propios de NEW FILE</b> en la galería'+(X.clientes?' y también <b>diseños de otras personas</b> que se han sumado al sistema de puntos':'')+(X.total?'':' <em>(la estamos estrenando)</em>')+'</span></a>'+(X.clientes?'<a class="nf-puntos" href="#gana-puntos"><i aria-hidden="true">⭐</i><span><b>¿Quieres que esté el tuyo?</b> Súmate a los puntos con tu cuenta de Google ›</span></a>':'')+avisoArtista();
     if(a.dataset.h!==html){a.dataset.h=html;a.innerHTML=html}}
   function despejaFoto(){var m=document.querySelector('.hero .wz-way.main'),f=document.querySelector('main>.hero .nf-hero-art');if(!m)return;
     if(!despejaFoto.visto){despejaFoto.visto=1;addEventListener('resize',despejaFoto);if(window.ResizeObserver){var ro=new ResizeObserver(function(){requestAnimationFrame(despejaFoto)});[document.querySelector('main>.hero'),document.querySelector('.nf-intro'),f].forEach(function(e){if(e)ro.observe(e)})}if(document.fonts&&document.fonts.ready)document.fonts.ready.then(despejaFoto)}
