@@ -780,6 +780,20 @@ main>.hero .nf-intro :is(a,button){pointer-events:auto}
 
 header.top nav .cr-nav{order:5}
 </style>
+
+<style id="nf-inspiracion">
+.nf-ref{margin:9px 0 16px;padding:14px;border:1px solid var(--line);border-radius:16px;background:color-mix(in srgb,var(--brand) 8%,var(--card));color:var(--ink)}
+.nf-gallery-search{margin:12px 0;display:grid;gap:5px;max-width:420px}.nf-gallery-search label{font-weight:700}.nf-gallery-search input{min-height:44px;border-radius:12px}.nf-gallery-search:has(input:placeholder-shown) #nfGalleryStatus{display:none}
+.nf-ref h3{margin:0 0 4px;font-size:17px;letter-spacing:-.025em}
+.nf-ref p{margin:0 0 10px}
+.nf-ref-choice{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center}
+.nf-ref img{display:block;width:64px;height:64px;object-fit:contain;border-radius:10px;background:#e7e4ee}
+.nf-ref img[hidden]{display:none}
+.nf-ref label,.nf-ref select{display:block;width:100%;min-width:0}
+.nf-ref select{margin-top:4px;min-height:44px}
+.nf-inspire-btn[hidden]{display:none}.nf-inspire-btn{min-height:44px;margin:8px 0;white-space:normal}
+.cr-artist .nf-profile-link{display:inline-flex;align-items:center;min-height:44px}
+</style>
 <link rel="preload" as="image" href="img/tee-negro.webp" fetchpriority="high">
 </head>
 <body>
@@ -833,6 +847,7 @@ header.top nav .cr-nav{order:5}
 
 <section class="s" id="disenos"><div class="wrap">
   <h2>Diseños</h2><p class="sub">Toca uno para verlo en tu prenda y en el color que quieras.</p>
+<div class="nf-gallery-search"><label for="nfGalleryQuery">Buscar en Diseños</label><input type="search" id="nfGalleryQuery" class="t" maxlength="80" placeholder="Busca por título, estilo o artista" autocomplete="off" aria-controls="grid"><span id="nfGalleryStatus" class="note" role="status"></span></div>
   <div class="gbar"><div class="chips" id="tags"></div><div class="seg" id="viewSeg" role="group" aria-label="Cómo ver los diseños"><button aria-pressed="true" data-v="on">En prenda</button><button aria-pressed="false" data-v="off">Solo diseño</button></div></div>
   <div class="grid" id="grid"></div>
 </div></section>
@@ -850,7 +865,8 @@ header.top nav .cr-nav{order:5}
       <input type="file" id="file" accept="image/*" hidden>
       <label class="f">Describe tu idea o el dibujo<textarea class="t" id="idea" rows="3" placeholder="Ej.: un paraguas lila con lluvia marrón, estilo dibujo animado"></textarea></label>
       <p class="note adv-tip">💡 <b>Cuanto más detallada sea la explicación, mejor resultado.</b> Cuenta qué aparece, cómo es, los colores, el estilo y el ambiente.</p>
-      <details class="adv" id="advBox"><summary>✨ Opciones avanzadas <span class="opt-l">· recomendado: tarda un poco más, pero sale mejor</span></summary><div id="advBody"></div></details>
+      <section class="nf-ref" id="nfReference" hidden aria-labelledby="nfRefTitle"><h3 id="nfRefTitle">Inspírate en NEW FILE</h3><p class="note">Elige una obra como referencia y cuenta qué quieres hacer distinto.</p><div class="nf-ref-choice"><img alt="" hidden><label for="nfReferencePick">Imagen de referencia<select class="t" id="nfReferencePick"></select></label></div></section>
+      <details class="adv" id="advBox"><summary>✨ Opciones avanzadas <span class="opt-l">· recomendado: tarda un poco más, pero sale mejor</span></summary><div id="advBody"></div></details><div id="nfDraftContact"><a id="nfDraftWa" class="btn alt nf-inspire-btn" target="_blank" rel="noopener" hidden>Consultar mi idea por WhatsApp</a></div>
       <label class="f"><span>Texto que quieres en la prenda <span class="opt-l">(opcional)</span></span><input class="t" id="ctext" maxlength="60" placeholder="Ej.: LOLA 2026"></label>
       <div id="tposBox"></div>
       <div id="wzQual"></div>
@@ -1101,7 +1117,12 @@ document.addEventListener('click',function(e){var r=e.target.closest&&e.target.c
 var TPN={center:'en el centro',top:'arriba, centrado',topleft:'arriba a la izquierda',topright:'arriba a la derecha',bottom:'abajo'},TPS=['center','topleft','top','topright','bottom'],CPN={left:'Pecho izquierdo',right:'Pecho derecho',center:'Centrado'};
 function edKey(){var c=ui.cust,p=placesOf(c.places||{front:true});if(!p.length)p=['front'];return p.indexOf(c.ed)>-1?c.ed:p[0]}
 function liveDes(){return {idea:($('#idea')||{}).value||'',text:($('#ctext')||{}).value||'',pos:ui.cust.tpos||'center',arc:ui.cust.tarc||0,photo:ui.cust.photo,photoUrl:ui.cust.photoUrl,photoP:ui.cust.photoP,free:ui.cust.free||null,tfree:ui.cust.tfree||null,font:ui.cust.tfont||'',tcol:ui.cust.tcol||'',photoPx:ui.cust.photoPx||null}}
-function hasDes(d){return !!(d&&((d.idea||'').trim()||(d.text||'').trim()||d.photo||d.photoUrl))}
+function hasDes(d){
+  if(!d)return false;
+  var idea=(d.idea||'').trim();
+  if(nfReferenceId(idea))idea=idea.split('\n').filter(function(x){return x.indexOf(NF_REF)!==0&&x.indexOf('✨ Detalles: ')!==0}).join('\n').trim();
+  return !!(idea||(d.text||'').trim()||d.photo||d.photoUrl);
+}
 function desOf(k){return k===edKey()?liveDes():((ui.cust.designs||{})[k]||null)}
 function mainKey(){var p=placesOf(ui.cust.places||{front:true});for(var i=0;i<p.length;i++)if(hasDes(desOf(p[i])))return p[i];return p[0]||'front'}
 function saveEd(){var c=ui.cust;if(!c.designs)c.designs={};c.designs[edKey()]=liveDes()}
@@ -1437,16 +1458,93 @@ $('#heroStage').addEventListener('click',function(e){
   var pick=$('#stepDes [data-wp9m="'+mode+'"]');if(pick)pick.click()
   $('#personaliza').scrollIntoView();
 });
-function renderGrid(){var tags=[];G.forEach(function(d){(d.tags||[]).forEach(function(t){if(tags.indexOf(t)<0)tags.push(t)})});
+
+/* Los diseños de la colección se citan en la idea, usando el mismo flujo del taller. */
+var NF_REF='Referencia NEW FILE: ',nfPublicQuery=new URLSearchParams(location.search),nfProfilePending=nfPublicQuery.get('artista'),nfDesignPending=nfPublicQuery.get('diseno');
+function nfSearchKey(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()}
+function nfDesignPermalink(id){
+  var target=new URL(location.href);
+  target.search='';target.hash='disenos';target.searchParams.set('diseno',id);
+  return target.href;
+}
+
+function nfReferenceWorks(){
+  return G.filter(function(d){return !packDeArtista(d)&&d.img&&/^[a-zA-Z0-9_-]{1,100}$/.test(d.id)});
+}
+function nfReferenceId(value){
+  var line=value.split('\n').find(function(x){return x.indexOf(NF_REF)===0});
+  var found=line&&line.match(/\[([a-zA-Z0-9_-]{1,100})\]$/);
+  return found?found[1]:'';
+}
+function nfReferenceRender(){
+  var panel=$('#nfReference'),idea=$('#idea');if(!panel||!idea)return;
+  var works=nfReferenceWorks(),id=nfReferenceId(idea.value),pick=panel.querySelector('select'),img=panel.querySelector('img');
+  panel.hidden=!works.length&&!id;
+  var link=$('#nfDraftWa'),brief=(idea.value||'').trim();
+  var gar=ui.cust.gar,garment=GAR[gar]||gar;
+  var colors=colorsOf(gar),color=colors[ui.cust.color];
+  var href=hasDes({idea:brief})&&waLink('Hola, quiero consultar una prenda personalizada.\nPrenda: '+garment+(color?' · '+color[0]:'')+'\nMi idea: '+brief);
+  if(link){link.hidden=!href;if(href)link.href=href;else link.removeAttribute('href')}
+
+  var options='<option value="">Sin referencia</option>'+works.map(function(d){return '<option value="'+esc(d.id)+'">'+esc(d.title)+'</option>'}).join('');
+  if(id&&!works.some(function(d){return d.id===id}))options+='<option value="'+esc(id)+'">Referencia no disponible</option>';
+  if(pick.dataset.options!==options){pick.innerHTML=options;pick.dataset.options=options}
+  pick.value=id;
+  var item=works.find(function(d){return d.id===id});
+  img.hidden=!item;
+  if(item&&img.getAttribute('src')!==item.img)img.src=item.img;
+  if(!item)img.removeAttribute('src');
+}
+function nfReferenceSelect(id){
+  var idea=$('#idea'),d=nfReferenceWorks().find(function(x){return x.id===id});
+  if(!idea||(id&&!d))return;
+  var lines=idea.value.split('\n').filter(function(line){return line.indexOf(NF_REF)!==0});
+  if(d)lines.unshift(NF_REF+String(d.title).replace(/[\r\n]+/g,' ').slice(0,90)+' ['+d.id+']');
+  idea.value=lines.join('\n').trim();
+  idea.dispatchEvent(new Event('input',{bubbles:true}));
+  draftSoon();
+}
+function nfReferenceProfile(){
+  if(!nfProfilePending||!G.some(function(d){return crKey(d)===nfProfilePending}))return;
+  if(!ui.tag)ui.tag='__a:'+nfProfilePending;
+  nfProfilePending=null;
+}
+document.addEventListener('change',function(e){
+  if(e.target.id==='nfReferencePick')nfReferenceSelect(e.target.value);
+});
+document.addEventListener('input',function(e){if(e.target.id==='idea')nfReferenceRender()});
+document.addEventListener('click',function(e){
+  var t=e.target.closest('[data-nf-inspire]');if(!t)return;
+  if(!nfReferenceWorks().some(function(d){return d.id===t.dataset.nfInspire}))return;
+  closeDlg();nfAbrir();wzGo(2,true);
+  var mode=$('[data-wp9m="idea"]');if(mode)mode.click();
+  nfReferenceSelect(t.dataset.nfInspire);
+  var adv=$('#advBox');if(adv)adv.open=true;
+  $('#stepDes').scrollIntoView({block:'start'});
+  var pick=$('#nfReferencePick');if(pick)pick.focus({preventScroll:true});
+});
+
+$('#nfGalleryQuery').addEventListener('input',renderGrid);
+function renderGrid(){nfReferenceProfile();nfReferenceRender();var tags=[];G.forEach(function(d){(d.tags||[]).forEach(function(t){if(tags.indexOf(t)<0)tags.push(t)})});
   var hasCr=G.some(function(d){return !!crBy(d)});
   var comu=hasCr||crOn(),chip=function(k,t){return '<button class="chip" data-tag="'+esc(k)+'" aria-pressed="'+(k?ui.tag===k:!ui.tag)+'">'+esc(t)+'</button>'};
   $('#tags').innerHTML=[chip('','Todos'),chip('__nf','Colección NEW FILE')].concat(comu?[chip('__crea','⭐ Diseños de la comunidad')]:[]).concat(tags.map(function(t){return chip(t,t)})).join('');
   crHead();
   var L=G.filter(function(d){return !ui.tag||(ui.tag==='__nf'?!packDeArtista(d):ui.tag==='__crea'?!!crBy(d):ui.tag.indexOf('__a:')===0?'__a:'+crKey(d)===ui.tag:(d.tags||[]).indexOf(ui.tag)>-1)});
-  $('#grid').innerHTML=L.length?L.map(function(d){var gs=garsOf(d),g=gs[0],C=colorsOf(g),ci=Math.max(0,C.findIndex(function(c){return c[0]===d.color})),c=C[ci];
+  var query=nfSearchKey($('#nfGalleryQuery').value).trim();
+  if(query){
+    var terms=query.split(/\s+/);
+    L=L.filter(function(d){
+      var index=nfSearchKey([d.title,crBy(d)].concat(d.tags||[]).join(' '));
+      return terms.every(function(word){return index.includes(word)});
+    });
+  }
+  $('#nfGalleryStatus').textContent=query?(L.length===1?'1 diseño encontrado':L.length+' diseños encontrados'):'';
+  $('#grid').innerHTML=!L.length&&query?'<p class="empty" style="grid-column:1/-1">No hay diseños que coincidan en esta colección. Prueba otra palabra o cambia de colección.</p>':L.length?L.map(function(d){var gs=garsOf(d),g=gs[0],C=colorsOf(g),ci=Math.max(0,C.findIndex(function(c){return c[0]===d.color})),c=C[ci];
     var from=Math.min.apply(null,gs.map(function(x){return priceOf(x,d)}));
     return '<button class="card" data-open="'+esc(d.id)+'" aria-label="'+esc(d.title)+'"><div class="pic" style="background:'+(ui.view==='on'?bgFor(c[1]):'#fff')+'">'+(d.isNew?'<span class="new">Nuevo</span>':'')+(ui.view==='on'?mock(d,g,ci):'<img class="solo" src="'+esc(d.img)+'" alt="" loading="lazy">')+'</div>'+
       '<div class="inf"><div><h3>'+esc(d.title)+'</h3>'+(crBy(d)?'<small class="cr-by">por @'+esc(crBy(d))+'</small>':'')+'<div class="dots">'+C.slice(0,6).map(function(x){return '<i style="background:'+x[1]+'"></i>'}).join('')+'</div></div><div class="pr"><small>desde</small>'+eur(from)+'</div></div></button>'}).join(''):'<div class="empty wz-empty" style="grid-column:1/-1"><span class="wz-pic">'+garSvg('tee','#17181c','',false,'front')+'</span><b>'+(ui.tag==='__crea'?'Aquí encontrarás los diseños de la comunidad':ui.tag==='__nf'?'Aquí encontrarás la colección NEW FILE':'Estrena tú el primero')+'</b><p>'+(ui.tag==='__crea'?'Diseños de otras personas que se han sumado al sistema de puntos. El tuyo puede ser de los primeros.':ui.tag==='__nf'?'Nuestros diseños propios. Muy pronto los primeros.':'Muy pronto verás aquí la colección NEW FILE y los diseños de la comunidad. Mientras tanto, crea el tuyo.')+'</p><a class="btn" href="#personaliza">Crear el mío</a>'+(ui.tag==='__crea'&&crOn()?'<a class="btn alt" href="#gana-puntos">Cómo funcionan los puntos</a>':'')+(waLink('Hola 👋 Avisadme cuando haya diseños nuevos')?'<a class="btn alt" target="_blank" rel="noopener" href="'+esc(waLink('Hola 👋 Avisadme cuando haya diseños nuevos'))+'">Avisadme por WhatsApp</a>':'')+'</div>';$('#viewSeg').style.display=G.length?'':'none';
+  if(nfDesignPending&&G.some(function(d){return d.id===nfDesignPending})){var ownLink=nfDesignPending;nfDesignPending=null;setTimeout(function(){openProd(ownLink)},0)}
   var ig=$('#insta');if(S.instagram&&G.length){ig.hidden=false;$('#igBtn').href='https://instagram.com/'+S.instagram.replace('@','');$('#igBtn').textContent='Ver @'+S.instagram.replace('@','')+' en Instagram';
     $('#igGrid').innerHTML=G.slice(0,6).map(function(d,i){var g=garsOf(d)[i%garsOf(d).length],C=colorsOf(g),ci=i%C.length;return '<a href="https://instagram.com/'+esc(S.instagram.replace('@',''))+'" target="_blank" rel="noopener" style="background:'+bgFor(C[ci][1])+'" aria-label="'+esc(d.title)+' en Instagram">'+mock(d,g,ci)+'</a>'}).join('')}}
 /* ficha de producto */
@@ -1454,7 +1552,7 @@ var P=null;
 function openProd(id){var d=G.find(function(x){return x.id===id});if(!d)return;var gs=garsOf(d),C=colorsOf(gs[0]);P={d:d,gar:gs[0],color:Math.max(0,C.findIndex(function(c){return c[0]===d.color})),size:S.sizes.indexOf('M')>-1?'M':S.sizes[0],qty:1};renderProd();openDlg();setTimeout(function(){$('#sheet').scrollTop=0},5)}
 function renderProd(){varUse(P.gar,P.vr);sizeFix(P);var sc=$('#sheet').scrollTop;setTimeout(function(){$('#sheet').scrollTop=sc});var d=P.d,gs=garsOf(d),C=colorsOf(P.gar);if(!C[P.color]||C[P.color][2])P.color=okIdx(C);var c=C[P.color],pr=priceOf(P.gar,d,P.model)+(P.cb&&cbOn()?cbExtra():imgStd(P.gar,P.places||{front:true}).total);
   $('#sheet').innerHTML='<button class="x" data-close aria-label="Cerrar">×</button><div class="prod"><div class="l"><div class="stage" style="box-shadow:none;padding:0">'+(P.cb&&cbOn()?'<div id="cbPrev">'+cbViews(d,P.gar,c[1],P.cbText,P.cbPos,P.cbArc)+'</div>':prodView(d,P,c))+'</div></div>'+
-    '<div class="r"><h2>'+esc(d.title)+'</h2>'+(crBy(d)?'<p class="cr-by">Diseño de <b>@'+esc(crBy(d))+'</b> · <button type="button" class="rm" data-crartist="'+esc(crKey(d))+'">Ver todos sus diseños</button></p>':'')+(packDeArtista(d)?'':'<p class="nf-coleccion">Colección NEW FILE</p>')+(d.desc?'<p class="note" style="font-size:16px">'+esc(d.desc)+'</p>':'')+crApoyo(d)+(packHay()&&d.img?'<button type="button" class="chip nf-pack-este" data-pack data-src="'+(packDeArtista(d)?'art':'nf')+'" data-gid="'+esc(d.id)+'">🎁 Llévalo en pack de 4 prendas · −'+packPctDe(packDeArtista(d)?'art':'nf')+' %</button>':'')+
+    '<div class="r"><h2>'+esc(d.title)+'</h2>'+(crBy(d)?'<p class="cr-by">Diseño de <b>@'+esc(crBy(d))+'</b> · <button type="button" class="rm" data-crartist="'+esc(crKey(d))+'">Ver todos sus diseños</button></p>':'')+(packDeArtista(d)?'':'<p class="nf-coleccion">Colección NEW FILE</p>')+(d.desc?'<p class="note" style="font-size:16px">'+esc(d.desc)+'</p>':'')+crApoyo(d)+'<a class="nf-profile-link" href="'+esc(nfDesignPermalink(d.id))+'" aria-label="Enlace directo a '+esc(d.title)+'">Enlace a este diseño</a> '+(nfReferenceWorks().includes(d)?'<button type="button" class="btn alt nf-inspire-btn" data-nf-inspire="'+esc(d.id)+'">Usar como inspiración</button>':'')+(packHay()&&d.img?'<button type="button" class="chip nf-pack-este" data-pack data-src="'+(packDeArtista(d)?'art':'nf')+'" data-gid="'+esc(d.id)+'">🎁 Llévalo en pack de 4 prendas · −'+packPctDe(packDeArtista(d)?'art':'nf')+' %</button>':'')+
     '<div class="lbl first">Prenda</div>'+garPick('data-pg',P.gar,gs)+
     modelPick(P.gar,P.model,'data-pm')+varPick(P.gar,P.vr,'data-pv')+'<div class="lbl">Color <small>'+esc(c[0])+'</small></div><div class="sw">'+C.map(function(cc,i){return '<button data-pc="'+i+'"'+swx(cc,P.gar)+' aria-pressed="'+(i===P.color)+'" style="background:'+cc[1]+'" aria-label="'+esc(cc[0])+'" title="'+esc(cc[0])+'"></button>'}).join('')+'</div>'+
     (cbOn()?'<div class="lbl">¿Cómo lo quieres?</div><div class="seg cbseg"><button data-cb="0" aria-pressed="'+!P.cb+'">Diseño delante</button><button data-cb="1" aria-pressed="'+!!P.cb+'">Nombre delante + diseño detrás'+(cbExtra()?' <small>+'+eur(cbExtra())+'</small>':'')+'</button></div>'+
@@ -1559,7 +1657,7 @@ document.addEventListener('click',function(e){var t=e.target.closest&&e.target.c
   if(t.hasAttribute('data-wzphoto')){$('#file').click();return}
   if(t.hasAttribute('data-wzfix')){ui.cust.retouch=!ui.cust.retouch;renderCustom();draftSoon();return}
   wpResize('m',(+t.dataset.wzsharp)/wpArea(ui.cust.gar,edKey()).w);renderCustom();draftSoon()});
-function renderCustom(){varUse(ui.cust.gar,ui.cust.vr);sizeFix(ui.cust);var c=ui.cust,_np=wpNormPlaces(c),C=colorsOf(c.gar),cc=C[(C[c.color]&&!C[c.color][2])?c.color:(c.color=okIdx(C))],v=vwOf(c.gar,c.view),pr=custPrice(c);
+function renderCustom(){nfReferenceRender();varUse(ui.cust.gar,ui.cust.vr);sizeFix(ui.cust);var c=ui.cust,_np=wpNormPlaces(c),C=colorsOf(c.gar),cc=C[(C[c.color]&&!C[c.color][2])?c.color:(c.color=okIdx(C))],v=vwOf(c.gar,c.view),pr=custPrice(c);
   var dtb=$('#desTabs');if(dtb){dtb.innerHTML=desTabsHtml();$('#tposBox').innerHTML=tposHtml();wpFontRestore()}
   $('#customPrev').innerHTML=custPrevHtml(c,cc);wpTouch();
   $('#customVw').innerHTML=WZ===3&&viewsOf(c.gar).length>1?wzThumbs(c,cc,v):vwSeg(v,'data-cv',c.gar);
@@ -1997,7 +2095,7 @@ function crHead(){var grid=$('#grid'),b=$('#crHead');if(!grid)return;if(!b){grid
   var L=crArtists();if(String(ui.tag).indexOf('__a:')===0&&!L.some(function(a){return '__a:'+a.key===ui.tag}))ui.tag=L.length?'__crea':'';
   if(ui.tag==='__crea'){b.innerHTML=!L.length?'':'<p class="note">Diseños de artistas que los pidieron y quisieron compartirlos. Toca un nombre para ver todo lo suyo.</p><div class="cr-artists">'+L.map(function(a){return '<button type="button" class="chip" data-crartist="'+esc(a.key)+'">@'+esc(a.name)+' <small>'+a.n+'</small></button>'}).join('')+'</div>';return}
   var a=L.filter(function(x){return '__a:'+x.key===ui.tag})[0];
-  b.innerHTML=a?'<div class="cr-artist"><button type="button" class="rm" data-tag="__crea">‹ Todos los artistas</button><h3>@'+esc(a.name)+'</h3><p class="note">'+esc(CRNET[a.net][0])+' · '+a.n+(a.n===1?' diseño publicado':' diseños publicados')+'</p>'+(a.url?'<a class="btn alt" target="_blank" rel="noopener nofollow ugc" href="'+esc(a.url)+'">'+(a.net==='otra'?'Visitar su página':'Ver en '+esc(CRNET[a.net][0]))+'</a>':'')+'</div>':''}
+  b.innerHTML=a?'<div class="cr-artist"><button type="button" class="rm" data-tag="__crea">‹ Todos los artistas</button><h3>@'+esc(a.name)+'</h3><p class="note">'+esc(CRNET[a.net][0])+' · '+a.n+(a.n===1?' diseño publicado':' diseños publicados')+'</p>'+(a.url?'<a class="btn alt" target="_blank" rel="noopener nofollow ugc" href="'+esc(a.url)+'">'+(a.net==='otra'?'Visitar su página':'Ver en '+esc(CRNET[a.net][0]))+'</a>':'')+' <a class="nf-profile-link" href="?artista='+encodeURIComponent(a.key)+'#disenos">Enlace al perfil</a></div>':''}
 function crArtist(key){ui.tag='__a:'+key;if($('#dlg').classList.contains('open'))closeDlg();renderGrid();var s=$('#disenos');if(s)s.scrollIntoView()}
 /* sección propia «Gana puntos» y sus llamadas. Sin cifras de canje: solo cómo se ganan. */
 function crEx(){var p=priceOf('tee',null)||19.9;return {price:p,pts:[crNum('fFast',1.25),crNum('fNormal',1),crNum('fSlow',.75)].map(function(f){return {f:f,n:Math.round(p*f)}})}}
@@ -2189,7 +2287,7 @@ load().then(function(){S.gars=(S.gars||[]).filter(function(g){return GAR[g]});if
 
   /* ===== Anotador privado: solo el dueño. Se ve únicamente en un dispositivo donde ha iniciado sesión en el Prompter de esta misma dirección; el público no ve nada, tampoco con #admin. Misma interfaz que el del Prompter. ===== */
   (function(){
-    var KEY='ef.adm',NK='ef.adm.an',VER='10.9',st=null,AN={notes:[],del:{},pos:null,hidden:false,mini:false,ign:{},noted:{},open:{new:true,wait:false,chk:true,done:false}},RAD={errors:[]},U={tab:'notes',f:'all',type:'bug',src:'web',edit:null,redo:null,send:'all',sync:'',ok:0,busy:false,login:false,err:'',open:false},tm=0,DRAG=null,ST=false;
+    var KEY='ef.adm',NK='ef.adm.an',VER='10.10',st=null,AN={notes:[],del:{},pos:null,hidden:false,mini:false,ign:{},noted:{},open:{new:true,wait:false,chk:true,done:false}},RAD={errors:[]},U={tab:'notes',f:'all',type:'bug',src:'web',edit:null,redo:null,send:'all',sync:'',ok:0,busy:false,login:false,err:'',open:false},tm=0,DRAG=null,ST=false;
     try{st=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){}
     try{var a0=JSON.parse(localStorage.getItem(NK)||'null');if(a0&&Array.isArray(a0.notes))AN=Object.assign(AN,a0)}catch(e){}
     if(!EF.url||!EF.key||!EF.owner)return;
@@ -2388,8 +2486,9 @@ window.__web={placement:function(){return wpPlacement.apply(null,arguments)},fon
 <script>
 /* 9.88 · opciones avanzadas del diseño: estilo, luz, sombras, fondo, colores y escena. Lo elegido se escribe al final de la idea («✨ Detalles: …»), así llega al pedido sin tocar nada más. Mismas opciones que el bot. */
 (function(){
-  var ADV=[['style','Estilo',[['Ilustración'],['Realista'],['Dibujos animados'],['Minimalista'],['Vintage / retro'],['Anime / manga'],['Urbano / graffiti'],['Acuarela']]],
+  var ADV=[['style','Estilo',[['Ilustración'],['Realista'],['Grabado'],['Dibujos animados'],['Minimalista'],['Vintage / retro'],['Anime / manga'],['Urbano / graffiti'],['Acuarela']]],
     ['light','Iluminación',[['Natural suave'],['Atardecer cálido'],['Dramática'],['Neón / noche'],['De estudio']]],
+    ['tone','Tonalidad',[['Fría'],['Cálida'],['Monocroma']]],
     ['shadow','Sombras',[['Sin sombras'],['Suaves'],['Marcadas']]],
     ['bg','Fondo',[['Sin fondo','lo mejor para estampar'],['Fondo sencillo'],['Escena completa']]],
     ['pal','Colores',[['Vivos'],['Pastel'],['Pocos colores'],['Blanco y negro']]]];
@@ -3026,7 +3125,7 @@ window.__web={placement:function(){return wpPlacement.apply(null,arguments)},fon
     var P=function(m){return caja.querySelector('[data-wp9p="'+m+'"]')},mete=function(m,e){if(e)P(m).appendChild(e)};
     mete('foto',drop);mete('foto',$('#file'));mete('foto',$('#wzQual'));
     mete('texto',txt.closest('label'));mete('texto',$('#tposBox'));
-    mete('idea',idea.closest('label'));mete('idea',s.querySelector('.adv-tip'));mete('idea',$('#advBox'));
+    mete('idea',$('#nfReference'));mete('idea',idea.closest('label'));mete('idea',s.querySelector('.adv-tip'));mete('idea',$('#advBox'));mete('idea',$('#nfDraftContact'));
     caja.querySelector('.wp9-modes').addEventListener('click',function(e){var b=e.target.closest('[data-wp9m]');if(b)abrir(b.dataset.wp9m)});
     /* cuando el texto o la idea los escribe la propia web (Asistente, órdenes), se abre esa parte */
     document.addEventListener('input',function(e){var id=e.target&&e.target.id;if(id!=='idea'&&id!=='ctext')return;if(!e.isTrusted&&e.target.value.trim())modo=id==='idea'?'idea':'texto';pintar()});
