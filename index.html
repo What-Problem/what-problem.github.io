@@ -794,6 +794,31 @@ header.top nav .cr-nav{order:5}
 .nf-inspire-btn[hidden]{display:none}.nf-inspire-btn{min-height:44px;margin:8px 0;white-space:normal}
 .cr-artist .nf-profile-link{display:inline-flex;align-items:center;min-height:44px}
 </style>
+
+<style id="nf-art-style">
+.nf-art{margin:18px 0;padding:16px;border:1px solid var(--line);border-radius:18px;background:color-mix(in srgb,var(--brand) 7%,var(--card));color:var(--ink)}
+#nfArtPublicProfile{border-inline-start:5px solid var(--brand)}#nfArtPublicProfile[data-art-accent=burdeos]{border-inline-start-color:#a7446e}#nfArtPublicProfile[data-art-accent=crema]{border-inline-start-color:#c5a36b}#nfArtPublicProfile[data-art-accent=verde]{border-inline-start-color:#628c54}#nfArtPublicProfile[data-art-accent=azul]{border-inline-start-color:#527dce}#nfArtPublicProfile[data-art-type=editorial] h3{font-family:Georgia,serif}#nfArtPublicProfile[data-art-type=taller] h3{font-family:monospace}#nfArtProfile{margin-top:18px}
+.nf-art[hidden]{display:none}
+.nf-art h3{margin:0 0 7px;font-size:clamp(20px,3vw,28px);letter-spacing:-.03em}
+.nf-art details{max-width:730px}
+.nf-art summary{cursor:pointer;font-weight:800;min-height:44px;display:flex;align-items:center}
+.nf-art form{display:grid;gap:8px;max-width:630px}
+.nf-art form label{min-width:0}
+.nf-art form .btn{justify-self:start}
+.nf-art input[type=file]{max-width:100%}
+.nf-art-cover{width:100%;height:clamp(120px,26vw,240px);object-fit:cover;border-radius:14px;display:block;margin-bottom:12px}
+.nf-art-avatar{width:74px;height:74px;object-fit:cover;border:2px solid var(--line);border-radius:50%;float:inline-end;margin:0 0 6px 12px}
+.nf-art-work{display:flex;flex-direction:column;cursor:default;min-width:0}
+.nf-art-work>div{padding:12px}.nf-art-work h4{margin:0 0 5px;font-size:17px}
+.nf-artwork{width:100%;height:200px;object-fit:contain;background:#181620}
+.nf-art-work select{width:100%;min-width:0}.nf-art [data-art-request-link][hidden]{display:none}
+.nf-art-cases{margin:10px 0;padding:0;list-style:none;display:grid;gap:8px}
+.nf-art-cases li{border:1px solid var(--line);border-radius:11px;padding:8px 12px}
+.nf-art-sales{display:block;margin:3px 0;color:var(--ink2);font-size:12px}
+#nfArtHighlight:not([hidden]){display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+#nfArtHighlight :is(strong,small,span){display:block}
+#nfArtHighlight strong{font-size:19px}
+</style>
 <link rel="preload" as="image" href="img/tee-negro.webp" fetchpriority="high">
 </head>
 <body>
@@ -849,6 +874,7 @@ header.top nav .cr-nav{order:5}
   <h2>Diseños</h2><p class="sub">Toca uno para verlo en tu prenda y en el color que quieras.</p>
 <div class="nf-gallery-search"><label for="nfGalleryQuery">Buscar en Diseños</label><input type="search" id="nfGalleryQuery" class="t" maxlength="80" placeholder="Busca por título, estilo o artista" autocomplete="off" aria-controls="grid"><span id="nfGalleryStatus" class="note" role="status"></span></div>
   <div class="gbar"><div class="chips" id="tags"></div><div class="seg" id="viewSeg" role="group" aria-label="Cómo ver los diseños"><button aria-pressed="true" data-v="on">En prenda</button><button aria-pressed="false" data-v="off">Solo diseño</button></div></div>
+<div class="nf-art" id="nfArtPublicProfile" hidden></div><div class="nf-art" id="nfArtHighlight" hidden></div><section class="nf-art" id="nfArtCatalog" hidden></section><div class="nf-art" id="nfHandmade" hidden><h3>Arte hecho a mano</h3><p class="note">Presenta una obra propia sin hacer ningún pedido. El taller revisará cómo la creaste antes de proponerte una colaboración.</p><details><summary data-art-open>Presentar una obra</summary><div id="nfArtPanel"></div></details></div>
   <div class="grid" id="grid"></div>
 </div></section>
 
@@ -1525,7 +1551,259 @@ document.addEventListener('click',function(e){
 });
 
 $('#nfGalleryQuery').addEventListener('input',renderGrid);
-function renderGrid(){nfReferenceProfile();nfReferenceRender();var tags=[];G.forEach(function(d){(d.tags||[]).forEach(function(t){if(tags.indexOf(t)<0)tags.push(t)})});
+
+/* Arte hecho a mano: la capacidad aparece tras instalar la migración. Pruebas privadas. */
+var NF_ART={available:false,loading:false,checked:false,totals:Object.create(null),month:Object.create(null),works:[]};
+var NF_ART_STATES={draft:'Borrador',submitted:'En revisión',changes:'Pide más información',verified:'Autoría revisada',rejected:'No aceptada',paused:'En pausa'};
+function artMonthLabel(){
+  var parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Madrid',year:'numeric',month:'2-digit'}).formatToParts(new Date());
+  var year=+parts.find(function(x){return x.type==='year'}).value,month=+parts.find(function(x){return x.type==='month'}).value;
+  return year+'-'+String(month).padStart(2,'0')+'-01';
+}
+function artCheckAvailability(){
+  if(NF_ART.loading||NF_ART.checked||!crReady())return;
+  NF_ART.loading=true;
+  rest('ef_art_profiles?select=id&limit=0').then(function(){
+    NF_ART.checked=NF_ART.available=true;
+    var section=$('#nfHandmade');if(section)section.hidden=false;artPublicProfile();
+    return rest('ef_art_sales_totals?select=gallery_id,month,units&month=in.(0001-01-01,'+artMonthLabel()+')&limit=10000');
+  }).then(function(result){
+    result.forEach(function(x){var group=x.month==='0001-01-01'?NF_ART.totals:NF_ART.month;
+      if(typeof x.gallery_id==='string'&&Number.isSafeInteger(x.units)&&x.units>=0)group[x.gallery_id]=x.units;
+    });
+    renderGrid();artCatalogLoad();
+  }).catch(function(){NF_ART.checked=true}).finally(function(){NF_ART.loading=false});
+}
+function artSalesLabel(id){
+  var count=NF_ART.totals[id];
+  return Number.isSafeInteger(count)?'<span class="nf-art-sales">'+count+' '+(count===1?'unidad vendida':'unidades vendidas')+'</span>':'';
+}
+function artHighlight(){
+  var box=$('#nfArtHighlight');if(!box)return;
+  var visibleWorks=NF_ART.works.map(function(work){
+    return {id:work.gallery_id,title:work.title,artist:(work.ef_art_profiles||{}).handle};
+  });
+  var leader=G.concat(visibleWorks).filter(function(d){return NF_ART.month[d.id]>0}).sort(function(a,b){
+    return NF_ART.month[b.id]-NF_ART.month[a.id]||String(a.id).localeCompare(String(b.id));
+  })[0];
+  box.hidden=!leader;
+  box.innerHTML=leader?'<div><small>Más vendido este mes</small><strong>'+esc(leader.title)+'</strong><span>'+NF_ART.month[leader.id]+' '+(NF_ART.month[leader.id]===1?'unidad vendida':'unidades vendidas')+'</span></div>'+(leader.artist?'<a class="btn alt" href="?taller='+encodeURIComponent(leader.artist)+'#nfArtCatalog">Ver obra</a>':'<button type="button" class="btn alt" data-open="'+esc(leader.id)+'">Ver diseño</button>'):'';
+}
+
+
+function artProfileImage(file,maxPixels,limit){
+  if(!file)return Promise.resolve(null);
+  if(!/^image\/(jpeg|png|webp)$/.test(file.type)||file.size>10000000)return Promise.reject(Error('Usa una imagen JPG, PNG o WebP de hasta 10 MB.'));
+  return createImageBitmap(file).then(function(image){
+    try {
+      var scale=Math.min(1,maxPixels/Math.max(image.width,image.height)),canvas=document.createElement('canvas');
+      canvas.width=Math.max(1,Math.round(image.width*scale));canvas.height=Math.max(1,Math.round(image.height*scale));
+      canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);
+      for(var quality=.86;quality>=.45;quality-=.1){
+        var url=canvas.toDataURL('image/webp',quality);
+        if(url.length<=limit)return url;
+      }
+      throw Error('La foto sigue siendo demasiado pesada. Elige otra imagen.');
+    }finally{image.close()}
+  });
+}
+function artChoiceLabel(choice){
+  var garment=GAR[choice.garment]||choice.garment,zone=PN[choice.zone]||choice.zone;
+  var fee=Number.isInteger(choice.fee_cents)?' + '+eur(choice.fee_cents/100):' + '+(choice.fee_basis_points/100).toLocaleString('es-ES')+' % de la prenda';
+  return garment+' · '+zone+' · '+(choice.width_mm/10).toLocaleString('es-ES')+' cm'+fee;
+}
+function artCatalogLoad(){
+  var box=$('#nfArtCatalog'),handle=nfPublicQuery.get('taller');
+  if(!box)return;
+  var url='ef_art_catalog?select=gallery_id,title,artwork,choices,ef_art_profiles!inner(handle,public_data)&visible=eq.true&limit=100';
+  if(handle&&/^[a-z0-9][a-z0-9_-]{2,29}$/.test(handle))url+='&ef_art_profiles.handle=eq.'+encodeURIComponent(handle);
+  rest(url).then(function(rows){
+    if(!Array.isArray(rows)||!rows.length)return;
+    NF_ART.works=rows;artHighlight();box.hidden=false;
+    box.innerHTML='<h3>Obras hechas a mano</h3><div class="grid">'+rows.map(function(x){
+      var p=x.ef_art_profiles||{},choices=x.choices||[],nombre=(p.public_data||{}).display_name||('@'+(p.handle||''));
+      return '<article class="card nf-art-work"><img class="nf-artwork" src="'+esc(x.artwork)+'" alt="" loading="lazy">'+
+        '<div><h4>'+esc(x.title)+'</h4><a href="?taller='+encodeURIComponent(p.handle)+'#disenos">Por '+esc(nombre)+'</a>'+
+        artSalesLabel(x.gallery_id)+'<label class="f">Prenda y zona autorizadas<select class="t">'+choices.map(function(c,i){
+          return '<option value="'+i+'">'+esc(artChoiceLabel(c))+'</option>';
+        }).join('')+'</select></label><p class="note" data-art-choice-note></p><div data-art-buy></div>'+
+        '<a class="chip" data-art-request-link target="_blank" rel="noopener" hidden>Preguntar por WhatsApp</a></div></article>';
+    }).join('')+'</div>';
+    box.querySelectorAll('.nf-art-work').forEach(function(card,i){
+      var select=card.querySelector('select'),link=card.querySelector('[data-art-request-link]'),line=card.querySelector('[data-art-choice-note]'),work=rows[i];
+      var paint=function(){
+        var c=work.choices[+select.value];if(!c)return;
+        line.textContent=(c.fixed?'Posición fijada por el artista.':'Posición a concretar con el taller en la zona elegida.')+' '+(c.scale?'Se admite escalado proporcional.':'Se conserva el tamaño autorizado.');
+        artBuyPaint(card,work,c);
+        var href=waLink('Hola, me interesa la obra «'+work.title+'» de Arte hecho a mano.\nReferencia: '+work.gallery_id+'\n'+artChoiceLabel(c)+'\nTengo una duda antes de pedirla.');
+        link.hidden=!href;if(href)link.href=href;else link.removeAttribute('href');
+      };
+      select.addEventListener('change',paint);paint();
+    });
+  }).catch(function(){});
+}
+
+/* ---- comprar una obra: precio = prenda + suplemento pactado. El servidor lo vuelve a comprobar ---- */
+function artFeeCents(c,baseCents){return Number.isInteger(c.fee_cents)?c.fee_cents:Math.round(baseCents*c.fee_basis_points/10000)}
+function artMaxMm(c){var a=wpArea(c.garment,c.zone);return Math.min(c.width_mm,Math.floor(a.w*10+.05))}
+function artSellable(c){return (S.gars||[]).indexOf(c.garment)>-1&&colorsOf(c.garment).some(function(k){return !k[2]})&&(c.scale||artMaxMm(c)>=c.width_mm)}
+function artPrice(c){var base=Math.round(priceOf(c.garment,null)*100),fee=artFeeCents(c,base);return {baseCents:base,feeCents:fee,unit:(base+fee)/100}}
+var NF_ART_SPOTS=[['mid','Centro'],['high','Parte alta'],['low','Parte baja']];
+function artBuyPaint(card,work,c){
+  var box=card.querySelector('[data-art-buy]');if(!box)return;
+  if(!artSellable(c)){box.innerHTML='<p class="note">Esta combinación se pide hablando con el taller.</p>';return}
+  var colores=colorsOf(c.garment).filter(function(k){return !k[2]}),tallas=sizesFor(c.garment),max=artMaxMm(c),p=artPrice(c),
+    sel=function(n,l,ops,def){return '<label class="f">'+l+'<select class="t" data-art-f="'+n+'">'+ops.map(function(o){return '<option value="'+esc(o[0])+'"'+(String(o[0])===String(def)?' selected':'')+'>'+esc(o[1])+'</option>'}).join('')+'</select></label>'};
+  var anchos=[];if(c.scale){[1,.85,.7,.55,.4].forEach(function(k){var m=Math.max(10,Math.round(max*k));if(anchos.indexOf(m)<0)anchos.push(m)})}
+  box.innerHTML=sel('color','Color',colores.map(function(k){return [k[0],k[0]]}),colores[0][0])+
+    (tallas.length>1?sel('size','Talla',tallas.map(function(t){return [t,t]}),tallas.indexOf('M')>-1?'M':tallas[0]):'')+
+    (VARS[c.garment]||[]).map(function(v){return sel('vr-'+v.k,v.t,v.o.map(function(o){return [o[0],o[1]]}),v.o[0][0])}).join('')+
+    (c.scale?sel('width','Ancho del estampado',anchos.map(function(m){return [m,(m/10).toLocaleString('es-ES')+' cm']}),anchos[0]):'')+
+    (!c.fixed&&(c.zone==='front'||c.zone==='back')&&c.garment!=='beanie'&&c.garment!=='jogger'?sel('spot','Dónde dentro de la zona',NF_ART_SPOTS,'mid'):'')+
+    sel('qty','Cantidad',[1,2,3,4,5,6,7,8,9,10].map(function(n){return [n,n]}),1)+
+    '<p><b>'+eur(p.unit)+'</b> <span class="note">prenda '+eur(p.baseCents/100)+' + obra '+eur(p.feeCents/100)+'</span></p>'+
+    '<button type="button" class="btn" data-art-add>Añadir a mi pedido</button><p class="note">Precio pactado con el artista: no lleva otros descuentos ni entra en packs.</p>';
+  box.querySelector('[data-art-add]').addEventListener('click',function(){var v={};box.querySelectorAll('[data-art-f]').forEach(function(f){v[f.dataset.artF]=f.value});artAdd(work,c,v,this)});
+}
+function artAdd(work,c,v,boton){
+  if(!artSellable(c)){say('Esa combinación no está disponible ahora');return Promise.resolve(false)}
+  if(boton)boton.disabled=true;
+  return wpImageSize(work.artwork).then(function(){
+    var g=c.garment,zona=c.zone,a=wpArea(g,zona),px=WP_PROD_DIMS[work.artwork],max=artMaxMm(c),mm=c.scale?Math.max(10,Math.min(max,Math.round(+v.width||max))):c.width_mm;
+    var w=Math.min(1,mm/10/a.w),h=w*a.w*(px.h/px.w)/a.h;
+    if(h>1){if(!c.scale){say('A ese tamaño no cabe en esta prenda: pregúntanos por WhatsApp');return false}w=w/h;h=1;mm=Math.max(10,Math.floor(w*a.w*10))}
+    var y=v.spot==='high'?Math.min(.08,1-h):v.spot==='low'?Math.max(0,1-h-.05):(1-h)/2,frames={};frames[zona]={x:(1-w)/2,y:y,w:w,h:h};
+    var p=artPrice(c),lugar={};lugar[zona]=true;var vr=null;(VARS[g]||[]).forEach(function(s){vr=vr||{};vr[s.k]=v['vr-'+s.k]||s.o[0][0]});
+    var d={id:work.gallery_id,img:work.artwork,title:work.title,designId:''},handle=(work.ef_art_profiles||{}).handle||'';
+    var it={kind:'art',gid:work.gallery_id,designId:'',title:('Obra · '+work.title+(handle?' · @'+handle:'')).slice(0,80),img:work.artwork,gar:g,color:v.color,size:v.size||sizesFor(g)[0],qty:Math.max(1,Math.min(10,+v.qty||1)),unit:p.unit,unitMax:0,model:(modelOf(g,'')&&modelsOf(g).length)?(modelOf(g,'').brand+' '+(modelOf(g,'').model||'')).trim():'',modelId:modelsOf(g).length?modelsOf(g)[0].id:'',places:[zona],mainPlace:zona,layout:'',alts:[],
+      art:{garment:g,zone:zona,widthMm:mm,baseCents:p.baseCents,spot:v.spot||'mid',artist:handle},
+      placement:wpGalleryPlan({gar:g,places:lugar,d:d,frames:frames,alt:null})};
+    it.rows=[['Prenda',eur(p.baseCents/100)],['Obra · '+(mm/10).toLocaleString('es-ES')+' cm de ancho',eur(p.feeCents/100)],['Por unidad',eur(p.unit)]];
+    varCart(it,vr);cart.push(it);saveCart();ORD.step=1;openDlg();renderCart();say('Obra añadida a tu pedido');return true;
+  },function(){say('No se pudo abrir la imagen de la obra. Comprueba tu conexión.');return false}).then(function(r){if(boton)boton.disabled=false;return r});
+}
+function artEnCesta(){return cart.reduce(function(t,i){return t+(i.kind==='art'?i.unit*i.qty:0)},0)}
+
+async function artProfileForm(){
+  var box=$('#nfArtProfile'),session=crSess();
+  if(!box||!session)return;
+  try {
+    var identity=(await crApi('/rest/v1/ef_art_identity?select=profile_id&artist=eq.'+encodeURIComponent(session.uid)))[0];
+    var existing=identity&&(await crApi('/rest/v1/ef_art_profiles?select=*&id=eq.'+encodeURIComponent(identity.profile_id)))[0];
+    if((crSess()||{}).uid!==session.uid||!box.isConnected)return;
+    var p=existing||{},choices=function(values,selected){return values.map(function(v){return '<option'+(v===selected?' selected':'')+'>'+esc(v)+'</option>'}).join('')};
+    box.innerHTML='<form id="nfArtProfileForm"><h4>Tu perfil de artista</h4><label class="f">Portada<input class="t" type="file" name="cover" accept="image/jpeg,image/png,image/webp"></label><label class="f">Avatar<input class="t" type="file" name="avatar" accept="image/jpeg,image/png,image/webp"></label><label class="f">Usuario público<input class="t" name="handle" required pattern="[a-z0-9][a-z0-9_\\-]{2,29}" maxlength="30" value="'+esc(p.handle||'')+'"'+(existing?' disabled':'')+'></label>'+
+      '<label class="f">Nombre artístico<input class="t" name="display_name" required maxlength="70" value="'+esc(p.display_name||'')+'"></label>'+
+      '<label class="f">Sobre ti<textarea class="t" name="bio" maxlength="600">'+esc(p.bio||'')+'</textarea></label>'+
+      '<label class="f">Portafolio<input class="t" name="portfolio" type="url" maxlength="300" value="'+esc(p.portfolio||'')+'"></label>'+
+      '<label class="f">Color<select class="t" name="accent">'+choices(['violeta','burdeos','crema','verde','azul'],p.accent)+'</select></label>'+
+      '<label class="f">Tipografía<select class="t" name="typography">'+choices(['orbita','editorial','taller'],p.typography)+'</select></label>'+
+      (p.published?'<a class="chip" href="?taller='+encodeURIComponent(p.handle)+'#disenos">Ver perfil público</a>':'<p class="note">El taller decide cuándo se publica.</p>')+(p.published?'<p class="note">Los cambios que guardes se verán cuando el taller los apruebe.</p>':'')+
+      '<p role="status" class="note" data-art-profile-status></p><button class="btn" type="submit">Guardar perfil</button></form>';
+    $('#nfArtProfileForm').addEventListener('submit',async function(e){
+      e.preventDefault();var f=e.target,button=f.querySelector('[type=submit]'),status=f.querySelector('[data-art-profile-status]');
+      if(button.disabled||(crSess()||{}).uid!==session.uid)return;
+      button.disabled=true;
+      try {
+        if(!identity){
+          identity=(await crApi('/rest/v1/ef_art_identity',{method:'POST',json:{artist:session.uid},headers:{Prefer:'return=representation'}}))[0];
+        }
+        var data={display_name:f.elements.display_name.value.trim(),bio:f.elements.bio.value.trim(),portfolio:f.elements.portfolio.value.trim(),accent:f.elements.accent.value,typography:f.elements.typography.value};
+        var images=await Promise.all([artProfileImage(f.elements.cover.files[0],1280,380000),artProfileImage(f.elements.avatar.files[0],320,90000)]);
+        if(images[0])data.cover=images[0];if(images[1])data.avatar=images[1];
+        var target='/rest/v1/ef_art_profiles';
+        if(!existing){data.id=identity.profile_id;data.handle=f.elements.handle.value.trim()}
+        var result=await crApi(target+(existing?'?id=eq.'+encodeURIComponent(identity.profile_id):''),{method:existing?'PATCH':'POST',json:data,headers:{Prefer:'return=representation'}});
+        if(!Array.isArray(result)||result.length!==1)throw Error('No se guardó el perfil.');
+        say('Perfil guardado');artProfileForm();
+      }catch(err){status.textContent=err.message+' Actualiza el panel si el perfil ya se creó.'}
+      finally{button.disabled=false}
+    });
+  }catch(err){if(box.isConnected)box.textContent='No se pudo cargar tu perfil. Vuelve a abrir el panel para reintentar.'}
+}
+function artPublicProfile(){
+  var handle=nfPublicQuery.get('taller'),box=$('#nfArtPublicProfile');
+  if(!box||!handle||!/^[a-z0-9][a-z0-9_-]{2,29}$/.test(handle))return;
+  rest('ef_art_profiles?select=handle,public_data&published=eq.true&handle=eq.'+encodeURIComponent(handle)).then(function(rows){
+    var p=rows[0]&&rows[0].public_data&&Object.assign({bio:'',portfolio:'',cover:'',avatar:''},rows[0].public_data,{handle:rows[0].handle});if(!p||!p.display_name)return;
+    box.hidden=false;box.setAttribute('data-art-accent',p.accent);box.setAttribute('data-art-type',p.typography);
+    box.innerHTML=(p.cover?'<img class="nf-art-cover" alt="" src="'+esc(p.cover)+'">':'')+(p.avatar?'<img class="nf-art-avatar" alt="" src="'+esc(p.avatar)+'">':'')+'<small>Arte hecho a mano</small><h3>'+esc(p.display_name)+'</h3><p>@'+esc(p.handle)+'</p>'+
+      (p.bio?'<p>'+esc(p.bio)+'</p>':'')+(/^https:\/\//i.test(p.portfolio)?'<a class="chip" href="'+esc(p.portfolio)+'" target="_blank" rel="noopener noreferrer">Ver portafolio</a>':'');
+  }).catch(function(){});
+}
+
+function artRequestForm(){
+  return '<form id="nfArtForm"><label class="f">Título de la obra<input class="t" name="title" required maxlength="100"></label>'+
+    '<label class="f">Técnica<input class="t" name="technique" required maxlength="80" placeholder="Ej.: linograbado"></label>'+
+    '<label class="f">Explica cómo la hiciste<textarea class="t" name="process" required minlength="20" maxlength="2500" rows="4"></textarea></label>'+
+    '<label class="f">Instagram o portafolio (opcional)<input class="t" type="url" maxlength="300" name="portfolio" placeholder="https://…"></label>'+
+    '<label class="f">Obra final<input class="t" name="work" type="file" accept="image/png,image/jpeg,image/webp"></label>'+
+    '<label class="f">Fotos o bocetos del proceso (hasta tres)<input class="t" name="proof" type="file" multiple accept="image/png,image/jpeg,image/webp"></label>'+
+    '<label class="check"><input type="checkbox" name="attested" required><span>La hice a mano y es mía. Declaro cualquier colaboración o referencia de terceros en la explicación.</span></label>'+
+    '<label class="check"><input type="checkbox" name="adult" required><span>Tengo 18 años o más (la colaboración es pagada).</span></label>'+
+    '<label class="check"><input type="checkbox" name="privacy" required><span>He leído <a href="privacidad.html#arte" target="_blank" rel="noopener">cómo se tratan mis pruebas</a>: solo las ve el taller y se borran cuando vence su plazo.</span></label>'+
+    '<p class="note" id="nfArtFormStatus" role="status"></p><button class="btn" type="submit">Enviar para revisión</button></form>';
+}
+function artFormPanel(){
+  var panel=$('#nfArtPanel'),session=crSess();
+  if(!panel)return;
+  if(!session){panel.innerHTML='<p>Entra con Google para presentar tus obras y seguir su revisión.</p>'+ (crInApp()?'<p class="note">Abre la tienda en el navegador para entrar con Google.</p>':'<button class="btn" type="button" data-crlogin>Entrar con Google</button>');return}
+  panel.innerHTML='<p role="status">Cargando tus solicitudes…</p>';
+  crApi('/rest/v1/ef_art_applications?select=id,title,technique,process,portfolio,attested,state,review_message&artist=eq.'+encodeURIComponent(session.uid)+'&order=created_at.desc&limit=50').then(function(list){
+    if((crSess()||{}).uid!==session.uid)return;
+    panel.innerHTML=(list.length?'<ul class="nf-art-cases">'+list.map(function(x){return '<li><strong>'+esc(x.title)+'</strong> <span>'+esc(NF_ART_STATES[x.state]||'En revisión')+'</span>'+
+      (x.review_message?'<p>'+esc(x.review_message)+'</p>':'')+(['draft','changes'].includes(x.state)?'<button class="chip" type="button" data-art-resume="'+esc(x.id)+'">Continuar</button>':'')+'</li>'}).join('')+'</ul>':'')+artRequestForm()+'<div id="nfArtProfile"></div>';artProfileForm();
+    panel.querySelectorAll('[data-art-resume]').forEach(function(button){button.addEventListener('click',function(){
+      var row=list.find(function(x){return x.id===button.dataset.artResume}),form=$('#nfArtForm');
+      ['title','technique','process','portfolio'].forEach(function(k){form.elements[k].value=row[k]||''});
+      form.elements.attested.checked=!!row.attested;form.dataset.artId=row.id;
+      $('#nfArtFormStatus').textContent='Reenvía los adjuntos que quieras añadir. Las pruebas anteriores siguen en tu solicitud.';
+      form.elements.title.focus();
+    })});
+  }).catch(function(){panel.innerHTML='<p class="err">No se pudieron leer tus solicitudes. Vuelve a abrir el panel para reintentar.</p>'});
+}
+function artProofUpload(file,path){
+  var ext={'image/png':'png','image/jpeg':'jpg','image/webp':'webp'}[file.type];
+  return crApi('/storage/v1/object/ef-art-evidence/'+path+'.'+ext,{method:'POST',headers:{'Content-Type':file.type,'x-upsert':'false'},body:file});
+}
+async function artRequestSend(form){
+  var s=crSess(),status=$('#nfArtFormStatus'),submit=form.querySelector('[type=submit]');
+  if(!s||submit.disabled)return;
+  var fields=form.elements,work=fields.work.files[0],proof=Array.from(fields.proof.files);
+  var attachments=(work?[[work,'obra']]:[]).concat(proof.map(function(file,i){return [file,'proceso-'+(i+1)]}));
+  if(!form.dataset.artId&&(!work||!proof.length)){status.textContent='Adjunta la obra terminada y al menos una imagen del proceso.';return}
+  if(proof.length>3||attachments.some(function(x){return !/^image\/(png|jpeg|webp)$/.test(x[0].type)||x[0].size>10000000||!x[0].size})){
+    status.textContent='Usa imágenes JPG, PNG o WebP de hasta 10 MB por archivo.';return
+  }
+  var id=form.dataset.artId||crypto.randomUUID(),uri='/rest/v1/ef_art_applications',record={title:fields.title.value.trim(),technique:fields.technique.value.trim(),process:fields.process.value.trim(),portfolio:fields.portfolio.value.trim(),attested:fields.attested.checked,adult:fields.adult.checked,privacy_version:fields.privacy.checked?'1':''};
+  submit.disabled=true;status.textContent='Guardando la solicitud y las pruebas…';
+  try {
+    if(!form.dataset.artId){
+      await crApi(uri,{method:'POST',json:Object.assign({id:id},record)});
+      form.dataset.artId=id;
+    }else await crApi(uri+'?id=eq.'+encodeURIComponent(id),{method:'PATCH',json:record});
+    var folder=s.uid+'/'+id,existing=await crApi('/storage/v1/object/list/ef-art-evidence',{method:'POST',json:{prefix:folder,limit:100}});
+    /* cada archivo nuevo va al primer hueco libre: si el taller pide más pruebas, no se descartan en silencio */
+    var usados=existing.map(function(x){return String(x.name).split('.')[0]});
+    for(var n=0;n<attachments.length;n++){
+      var esObra=attachments[n][1]==='obra',huecos=esObra?['obra','obra-2','obra-3','obra-4']:[1,2,3,4,5,6,7,8,9].map(function(k){return 'proceso-'+k});
+      var slot=huecos.filter(function(h){return usados.indexOf(h)<0})[0];
+      if(!slot)throw Error('Esta solicitud ya no admite más imágenes de este tipo. Escríbenos.');
+      await artProofUpload(attachments[n][0],folder+'/'+slot);usados.push(slot);
+    }
+    fields.work.value='';fields.proof.value='';
+    await crApi(uri+'?id=eq.'+encodeURIComponent(id),{method:'PATCH',json:{state:'submitted'},headers:{Prefer:'return=representation'}}).then(function(r){
+      if(!Array.isArray(r)||r.length!==1)throw Error('La solicitud cambió en otra pestaña. Vuelve a abrir el panel.');
+    });
+    say('Obra enviada para revisión');artFormPanel();
+  }catch(err){status.textContent=err.message+' El borrador conservado se puede reintentar.'}
+  finally{submit.disabled=false}
+}
+document.addEventListener('submit',function(e){if(e.target.id==='nfArtForm'){e.preventDefault();artRequestSend(e.target)}});
+document.addEventListener('click',function(e){if(e.target.closest('[data-art-open]'))artFormPanel()});
+window.addEventListener('storage',function(e){if(e.key===CRK&&NF_ART.available&&$('#nfHandmade details').open)artFormPanel()});
+
+function renderGrid(){artCheckAvailability();artHighlight();nfReferenceProfile();nfReferenceRender();var tags=[];G.forEach(function(d){(d.tags||[]).forEach(function(t){if(tags.indexOf(t)<0)tags.push(t)})});
   var hasCr=G.some(function(d){return !!crBy(d)});
   var comu=hasCr||crOn(),chip=function(k,t){return '<button class="chip" data-tag="'+esc(k)+'" aria-pressed="'+(k?ui.tag===k:!ui.tag)+'">'+esc(t)+'</button>'};
   $('#tags').innerHTML=[chip('','Todos'),chip('__nf','Colección NEW FILE')].concat(comu?[chip('__crea','⭐ Diseños de la comunidad')]:[]).concat(tags.map(function(t){return chip(t,t)})).join('');
@@ -1543,7 +1821,7 @@ function renderGrid(){nfReferenceProfile();nfReferenceRender();var tags=[];G.for
   $('#grid').innerHTML=!L.length&&query?'<p class="empty" style="grid-column:1/-1">No hay diseños que coincidan en esta colección. Prueba otra palabra o cambia de colección.</p>':L.length?L.map(function(d){var gs=garsOf(d),g=gs[0],C=colorsOf(g),ci=Math.max(0,C.findIndex(function(c){return c[0]===d.color})),c=C[ci];
     var from=Math.min.apply(null,gs.map(function(x){return priceOf(x,d)}));
     return '<button class="card" data-open="'+esc(d.id)+'" aria-label="'+esc(d.title)+'"><div class="pic" style="background:'+(ui.view==='on'?bgFor(c[1]):'#fff')+'">'+(d.isNew?'<span class="new">Nuevo</span>':'')+(ui.view==='on'?mock(d,g,ci):'<img class="solo" src="'+esc(d.img)+'" alt="" loading="lazy">')+'</div>'+
-      '<div class="inf"><div><h3>'+esc(d.title)+'</h3>'+(crBy(d)?'<small class="cr-by">por @'+esc(crBy(d))+'</small>':'')+'<div class="dots">'+C.slice(0,6).map(function(x){return '<i style="background:'+x[1]+'"></i>'}).join('')+'</div></div><div class="pr"><small>desde</small>'+eur(from)+'</div></div></button>'}).join(''):'<div class="empty wz-empty" style="grid-column:1/-1"><span class="wz-pic">'+garSvg('tee','#17181c','',false,'front')+'</span><b>'+(ui.tag==='__crea'?'Aquí encontrarás los diseños de la comunidad':ui.tag==='__nf'?'Aquí encontrarás la colección NEW FILE':'Estrena tú el primero')+'</b><p>'+(ui.tag==='__crea'?'Diseños de otras personas que se han sumado al sistema de puntos. El tuyo puede ser de los primeros.':ui.tag==='__nf'?'Nuestros diseños propios. Muy pronto los primeros.':'Muy pronto verás aquí la colección NEW FILE y los diseños de la comunidad. Mientras tanto, crea el tuyo.')+'</p><a class="btn" href="#personaliza">Crear el mío</a>'+(ui.tag==='__crea'&&crOn()?'<a class="btn alt" href="#gana-puntos">Cómo funcionan los puntos</a>':'')+(waLink('Hola 👋 Avisadme cuando haya diseños nuevos')?'<a class="btn alt" target="_blank" rel="noopener" href="'+esc(waLink('Hola 👋 Avisadme cuando haya diseños nuevos'))+'">Avisadme por WhatsApp</a>':'')+'</div>';$('#viewSeg').style.display=G.length?'':'none';
+      '<div class="inf"><div><h3>'+esc(d.title)+'</h3>'+artSalesLabel(d.id)+(crBy(d)?'<small class="cr-by">por @'+esc(crBy(d))+'</small>':'')+'<div class="dots">'+C.slice(0,6).map(function(x){return '<i style="background:'+x[1]+'"></i>'}).join('')+'</div></div><div class="pr"><small>desde</small>'+eur(from)+'</div></div></button>'}).join(''):'<div class="empty wz-empty" style="grid-column:1/-1"><span class="wz-pic">'+garSvg('tee','#17181c','',false,'front')+'</span><b>'+(ui.tag==='__crea'?'Aquí encontrarás los diseños de la comunidad':ui.tag==='__nf'?'Aquí encontrarás la colección NEW FILE':'Estrena tú el primero')+'</b><p>'+(ui.tag==='__crea'?'Diseños de otras personas que se han sumado al sistema de puntos. El tuyo puede ser de los primeros.':ui.tag==='__nf'?'Nuestros diseños propios. Muy pronto los primeros.':'Muy pronto verás aquí la colección NEW FILE y los diseños de la comunidad. Mientras tanto, crea el tuyo.')+'</p><a class="btn" href="#personaliza">Crear el mío</a>'+(ui.tag==='__crea'&&crOn()?'<a class="btn alt" href="#gana-puntos">Cómo funcionan los puntos</a>':'')+(waLink('Hola 👋 Avisadme cuando haya diseños nuevos')?'<a class="btn alt" target="_blank" rel="noopener" href="'+esc(waLink('Hola 👋 Avisadme cuando haya diseños nuevos'))+'">Avisadme por WhatsApp</a>':'')+'</div>';$('#viewSeg').style.display=G.length?'':'none';
   if(nfDesignPending&&G.some(function(d){return d.id===nfDesignPending})){var ownLink=nfDesignPending;nfDesignPending=null;setTimeout(function(){openProd(ownLink)},0)}
   var ig=$('#insta');if(S.instagram&&G.length){ig.hidden=false;$('#igBtn').href='https://instagram.com/'+S.instagram.replace('@','');$('#igBtn').textContent='Ver @'+S.instagram.replace('@','')+' en Instagram';
     $('#igGrid').innerHTML=G.slice(0,6).map(function(d,i){var g=garsOf(d)[i%garsOf(d).length],C=colorsOf(g),ci=i%C.length;return '<a href="https://instagram.com/'+esc(S.instagram.replace('@',''))+'" target="_blank" rel="noopener" style="background:'+bgFor(C[ci][1])+'" aria-label="'+esc(d.title)+' en Instagram">'+mock(d,g,ci)+'</a>'}).join('')}}
@@ -1552,7 +1830,7 @@ var P=null;
 function openProd(id){var d=G.find(function(x){return x.id===id});if(!d)return;var gs=garsOf(d),C=colorsOf(gs[0]);P={d:d,gar:gs[0],color:Math.max(0,C.findIndex(function(c){return c[0]===d.color})),size:S.sizes.indexOf('M')>-1?'M':S.sizes[0],qty:1};renderProd();openDlg();setTimeout(function(){$('#sheet').scrollTop=0},5)}
 function renderProd(){varUse(P.gar,P.vr);sizeFix(P);var sc=$('#sheet').scrollTop;setTimeout(function(){$('#sheet').scrollTop=sc});var d=P.d,gs=garsOf(d),C=colorsOf(P.gar);if(!C[P.color]||C[P.color][2])P.color=okIdx(C);var c=C[P.color],pr=priceOf(P.gar,d,P.model)+(P.cb&&cbOn()?cbExtra():imgStd(P.gar,P.places||{front:true}).total);
   $('#sheet').innerHTML='<button class="x" data-close aria-label="Cerrar">×</button><div class="prod"><div class="l"><div class="stage" style="box-shadow:none;padding:0">'+(P.cb&&cbOn()?'<div id="cbPrev">'+cbViews(d,P.gar,c[1],P.cbText,P.cbPos,P.cbArc)+'</div>':prodView(d,P,c))+'</div></div>'+
-    '<div class="r"><h2>'+esc(d.title)+'</h2>'+(crBy(d)?'<p class="cr-by">Diseño de <b>@'+esc(crBy(d))+'</b> · <button type="button" class="rm" data-crartist="'+esc(crKey(d))+'">Ver todos sus diseños</button></p>':'')+(packDeArtista(d)?'':'<p class="nf-coleccion">Colección NEW FILE</p>')+(d.desc?'<p class="note" style="font-size:16px">'+esc(d.desc)+'</p>':'')+crApoyo(d)+'<a class="nf-profile-link" href="'+esc(nfDesignPermalink(d.id))+'" aria-label="Enlace directo a '+esc(d.title)+'">Enlace a este diseño</a> '+(nfReferenceWorks().includes(d)?'<button type="button" class="btn alt nf-inspire-btn" data-nf-inspire="'+esc(d.id)+'">Usar como inspiración</button>':'')+(packHay()&&d.img?'<button type="button" class="chip nf-pack-este" data-pack data-src="'+(packDeArtista(d)?'art':'nf')+'" data-gid="'+esc(d.id)+'">🎁 Llévalo en pack de 4 prendas · −'+packPctDe(packDeArtista(d)?'art':'nf')+' %</button>':'')+
+    '<div class="r"><h2>'+esc(d.title)+'</h2>'+(crBy(d)?'<p class="cr-by">Diseño de <b>@'+esc(crBy(d))+'</b> · <button type="button" class="rm" data-crartist="'+esc(crKey(d))+'">Ver todos sus diseños</button></p>':'')+(packDeArtista(d)?'':'<p class="nf-coleccion">Colección NEW FILE</p>')+(d.desc?'<p class="note" style="font-size:16px">'+esc(d.desc)+'</p>':'') +crApoyo(d)+artSalesLabel(d.id)+'<a class="nf-profile-link" href="'+esc(nfDesignPermalink(d.id))+'" aria-label="Enlace directo a '+esc(d.title)+'">Enlace a este diseño</a> '+(nfReferenceWorks().includes(d)?'<button type="button" class="btn alt nf-inspire-btn" data-nf-inspire="'+esc(d.id)+'">Usar como inspiración</button>':'')+(packHay()&&d.img?'<button type="button" class="chip nf-pack-este" data-pack data-src="'+(packDeArtista(d)?'art':'nf')+'" data-gid="'+esc(d.id)+'">🎁 Llévalo en pack de 4 prendas · −'+packPctDe(packDeArtista(d)?'art':'nf')+' %</button>':'')+
     '<div class="lbl first">Prenda</div>'+garPick('data-pg',P.gar,gs)+
     modelPick(P.gar,P.model,'data-pm')+varPick(P.gar,P.vr,'data-pv')+'<div class="lbl">Color <small>'+esc(c[0])+'</small></div><div class="sw">'+C.map(function(cc,i){return '<button data-pc="'+i+'"'+swx(cc,P.gar)+' aria-pressed="'+(i===P.color)+'" style="background:'+cc[1]+'" aria-label="'+esc(cc[0])+'" title="'+esc(cc[0])+'"></button>'}).join('')+'</div>'+
     (cbOn()?'<div class="lbl">¿Cómo lo quieres?</div><div class="seg cbseg"><button data-cb="0" aria-pressed="'+!P.cb+'">Diseño delante</button><button data-cb="1" aria-pressed="'+!!P.cb+'">Nombre delante + diseño detrás'+(cbExtra()?' <small>+'+eur(cbExtra())+'</small>':'')+'</button></div>'+
@@ -1680,14 +1958,14 @@ function lookCnt(L){var k={};(L||cart).forEach(function(i){k[gGroup(i.gar)]=1});
 function qdOf(u,L){var p=0,look=false;qdTiers().forEach(function(t){if(u>=t[0])p=Math.max(p,t[1])});var c=lookCfg();if(c.min>0&&c.pct>0&&L&&lookCnt(L)>=c.min&&c.pct>p){p=c.pct;look=true}return {pct:p,look:look}}
 function qdHint(){var L=qdTiers(),a=L.map(function(t){return t[0]+' o más prendas: −'+t[1]+' %'}),c=lookCfg();if(c.min>0&&c.pct>0)a.push('look completo ('+c.min+' tipos de prenda distintos): −'+c.pct+' %');return a.join(' · ')}
 function qdHtml(T){return (T.packDesc?'<div class="pk-linea"><span>🎁 Pack look completo'+(T.packPct?' (−'+T.packPct+' %)':'')+'</span><span>−'+eur(T.packDesc)+'</span></div>':(packHay()&&cart.length?'<button type="button" class="btn alt block" data-pack style="margin-top:10px">🎁 Pack de 4 prendas (hasta −'+packPct()+' %)</button>':''))+qdHtml0(T)}
-function qdHtml0(T){var PE=packEnCesta(),sueltas=cart.filter(function(i){return !(i.pack&&PE.ids[i.pack])});if(!sueltas.length)return '';var u=sueltas.reduce(function(t,i){return t+i.qty},0);var lc=lookCfg(),lk=lookCnt(sueltas),lh=(lc.min>0&&lc.pct>0&&lk>0&&lk<lc.min)?'<div class="note" style="margin-top:10px">👗 Completa tu look con '+lc.min+' tipos de prenda distintos (camiseta, sudadera, gorro, pantalón…) y te llevas −'+lc.pct+' % (te faltan '+(lc.min-lk)+' tipo'+(lc.min-lk>1?'s':'')+').</div>':'';if(T.qd>0)return '<div class="cp on"><span>'+(T.qdLook?'👗 Look completo':'🛍️ Descuento por cantidad')+' <b>−'+T.qdPct+' %</b> · −'+eur(T.qd)+'</span></div>';var nx=qdTiers().filter(function(t){return u<t[0]})[0];return (nx?'<div class="note" style="margin-top:10px">🛍️ Con '+nx[0]+' o más prendas te llevas −'+nx[1]+' % (te faltan '+(nx[0]-u)+').</div>':'')+lh}
+function qdHtml0(T){var PE=packEnCesta(),sueltas=cart.filter(function(i){return !(i.pack&&PE.ids[i.pack])&&i.kind!=='art'});if(!sueltas.length)return '';var u=sueltas.reduce(function(t,i){return t+i.qty},0);var lc=lookCfg(),lk=lookCnt(sueltas),lh=(lc.min>0&&lc.pct>0&&lk>0&&lk<lc.min)?'<div class="note" style="margin-top:10px">👗 Completa tu look con '+lc.min+' tipos de prenda distintos (camiseta, sudadera, gorro, pantalón…) y te llevas −'+lc.pct+' % (te faltan '+(lc.min-lk)+' tipo'+(lc.min-lk>1?'s':'')+').</div>':'';if(T.qd>0)return '<div class="cp on"><span>'+(T.qdLook?'👗 Look completo':'🛍️ Descuento por cantidad')+' <b>−'+T.qdPct+' %</b> · −'+eur(T.qd)+'</span></div>';var nx=qdTiers().filter(function(t){return u<t[0]})[0];return (nx?'<div class="note" style="margin-top:10px">🛍️ Con '+nx[0]+' o más prendas te llevas −'+nx[1]+' % (te faltan '+(nx[0]-u)+').</div>':'')+lh}
 /* el navegador recuerda con qué números ya se pidió con la bienvenida; la comprobación definitiva la hace la tienda (Prompter y bot) */
 function tel9(v){return String(v||'').replace(/\D/g,'').slice(-9)}
 function welcomeUsados(){try{return JSON.parse(localStorage.getItem('wp.bienvenida')||'[]')}catch(e){return []}}
 function welcomeYa(){var t=tel9(ORD.phone);return t.length===9&&welcomeUsados().indexOf(t)>-1}
 function welcomeGuarda(){var t=tel9(ORD.phone);if(t.length!==9)return;try{var U=welcomeUsados();if(U.indexOf(t)<0)U.push(t);localStorage.setItem('wp.bienvenida',JSON.stringify(U.slice(-20)))}catch(e){}}
 function cpVale(c){var x=cpFind(c);return x&&x.welcome&&welcomeYa()?null:x}
-function totals(){var PE=packEnCesta(),sueltas=cart.filter(function(i){return !(i.pack&&PE.ids[i.pack])}),sub=cart.reduce(function(t,i){return t+i.unit*i.qty},0),subMax=cart.reduce(function(t,i){return t+(i.unitMax>i.unit?i.unitMax:i.unit)*i.qty},0),ship=ORD.deliv==='ship'?((S.ship.freeFrom&&sub>=+S.ship.freeFrom)?0:+S.ship.price||0):0,cp=cpVale(ORD.coupon),q=qdOf(sueltas.reduce(function(t,i){return t+i.qty},0),sueltas),subS=Math.round((sub-PE.sub)*100)/100,qd=Math.round(subS*q.pct)/100,subSM=subMax-PE.sub,qdM=Math.round(subSM*q.pct)/100,base=function(s,d){return cp&&cp.welcome?s-d-PE.desc:s-PE.sub-d},disc=cpDisc(cp,Math.max(0,base(sub,qd)));return {sub:sub,ship:ship,qd:qd,qdPct:q.pct,qdLook:!!q.look,packDesc:PE.desc,packPct:PE.desc?PE.pct:0,disc:disc,coupon:disc?cp.code:'',total:Math.round((sub-qd-PE.desc-disc+ship)*100)/100,totalMax:subMax>sub?subMax-qdM-PE.desc-cpDisc(cp,Math.max(0,base(subMax,qdM)))+ship:0}}
+function totals(){var PE=packEnCesta(),AR=artEnCesta(),sueltas=cart.filter(function(i){return !(i.pack&&PE.ids[i.pack])&&i.kind!=='art'}),sub=cart.reduce(function(t,i){return t+i.unit*i.qty},0),subMax=cart.reduce(function(t,i){return t+(i.unitMax>i.unit?i.unitMax:i.unit)*i.qty},0),ship=ORD.deliv==='ship'?((S.ship.freeFrom&&sub>=+S.ship.freeFrom)?0:+S.ship.price||0):0,cp=cpVale(ORD.coupon),q=qdOf(sueltas.reduce(function(t,i){return t+i.qty},0),sueltas),subS=Math.round((sub-PE.sub-AR)*100)/100,qd=Math.round(subS*q.pct)/100,subSM=subMax-PE.sub-AR,qdM=Math.round(subSM*q.pct)/100,base=function(s,d){return cp&&cp.welcome?s-AR-d-PE.desc:s-AR-PE.sub-d},disc=cpDisc(cp,Math.max(0,base(sub,qd)));return {sub:sub,ship:ship,qd:qd,qdPct:q.pct,qdLook:!!q.look,packDesc:PE.desc,packPct:PE.desc?PE.pct:0,disc:disc,coupon:disc?cp.code:'',total:Math.round((sub-qd-PE.desc-disc+ship)*100)/100,totalMax:subMax>sub?subMax-qdM-PE.desc-cpDisc(cp,Math.max(0,base(subMax,qdM)))+ship:0}}
 function cpHtml(T){if(!(S.coupons||[]).length&&!welcomeS().on)return '';var cp=cpFind(ORD.coupon);
   if(cp)return '<div class="cp on"><span>🎟️ <b>'+esc(cp.code)+'</b> '+(T.disc?'−'+eur(T.disc):'· '+(+cp.min?'a partir de '+eur(+cp.min):'no se aplica'))+'</span><button type="button" class="rm" data-cprm>Quitar</button></div>'+(cp.welcome?(welcomeYa()?'<div class="err" style="margin-top:6px">Con este número ya se usó el código de bienvenida: vale una sola vez por persona.</div>':'<p class="note" style="margin:6px 0 0">Vale <b>una vez por persona</b>, en tu primera compra. Lo comprobamos con tu número de WhatsApp antes de confirmar.</p>'):'');
   return '<div class="cp"><input class="t" data-o="cpIn" placeholder="¿Tienes un código de descuento?" value="'+esc(ORD.cpIn)+'" autocapitalize="characters" aria-label="Código de descuento"><button type="button" class="btn ghost" data-cpok>Aplicar</button></div>'+(ORD.cpErr?'<div class="err" style="margin-top:6px">'+esc(ORD.cpErr)+'</div>':'')}
@@ -1759,15 +2037,15 @@ function send(){ORD.err='';var osFail=function(n,m){ORD.step=n;ORD.err=m;return 
   Promise.all(cart.map(function(i){var src=i.file instanceof Blob?i.file:(i.fileData?dataBlob(i.fileData):null);return i.photo?Promise.resolve():src?uploadPhoto(src).then(function(p){i.photo=p}):Promise.resolve()}).concat([].concat.apply([],cart.map(function(i){return (i.parts||[]).map(function(p){var s2=p.file instanceof Blob?p.file:(p.fileData?dataBlob(p.fileData):null);return p.photo?Promise.resolve():s2?uploadPhoto(s2).then(function(u){p.photo=u}):Promise.resolve()})})))).then(function(){return wpUploadProofs()}).then(function(){
     if(EF.url&&EF.owner&&cart.some(function(i){return (i.hadFile&&!i.photo)||(i.parts||[]).some(function(p){return p.hadFile&&!p.photo})}))throw new Error('WP_PHOTO_UPLOAD');
     var PK_ENV=packEnCesta();var data={client:{name:ORD.name.trim().slice(0,80),phone:ph.slice(0,20),email:ORD.email.slice(0,80)},delivery:{mode:ORD.deliv,address:ORD.addr.trim().slice(0,300)},notes:((cart.some(function(i){return i.retouch})?'🛠️ RETOCAR FOTO (incluido): enviar prueba antes de estampar. ':'')+ORD.notes).slice(0,400),
-      items:cart.map(function(i){return {pack:i.pack||'',packPct:i.pack&&PK_ENV.ids[i.pack]?PK_ENV.por[i.pack]:0,retouch:!!i.retouch,photoPpp:wpItemPpp(i),offer:i.offer&&crOn()?i.offer.token:'',kind:i.kind,galleryId:i.gid||'',designId:i.designId||'',title:String(i.title).slice(0,80),gar:i.gar,model:(i.model||'').slice(0,60),vr:i.vr||null,modelId:i.modelId||'',color:i.color,size:i.size,qty:i.qty,unit:i.unit,idea:(i.idea||'').slice(0,600),places:(i.places||[]),text:(i.text||'').slice(0,60),photo:i.photo||'',layout:i.layout||'',chest:(i.chest||'').slice(0,20),chestFont:i.chestFont||'',chestPos:i.chestPos||'',chestArc:+i.chestArc||0,mainPlace:i.mainPlace||'',textPos:i.textPos||'',textArc:+i.textArc||0,free:frOut(i.free),placement:wpPlacementForSend(i),font:i.font||'',tcol:i.tcol||'',parts:(i.parts||[]).map(function(p){return {place:p.place,idea:(p.idea||'').slice(0,600),text:(p.text||'').slice(0,60),textPos:p.textPos||'',textArc:+p.textArc||0,free:frOut(p.free),font:p.font||'',tcol:p.tcol||'',photo:p.photo||''}}),alts:(i.alts||[]).map(function(a){return {place:a.place,gid:a.gid||'',designId:a.designId||'',title:String(a.title||'').slice(0,80)}})}}),subtotal:T.sub,ship:T.ship,packDiscount:T.packDesc||0,packPct:T.packPct||0,qtyDiscount:T.qd||0,qtyPct:T.qdPct||0,lookPack:!!T.qdLook,discount:T.disc||0,coupon:T.coupon||'',total:T.total,totalMax:T.totalMax||0};
+      items:cart.map(function(i){return {art:i.kind==='art'?{garment:i.art.garment,zone:i.art.zone,widthMm:i.art.widthMm,baseCents:i.art.baseCents,spot:i.art.spot}:undefined,pack:i.pack||'',packPct:i.pack&&PK_ENV.ids[i.pack]?PK_ENV.por[i.pack]:0,retouch:!!i.retouch,photoPpp:wpItemPpp(i),offer:i.offer&&crOn()?i.offer.token:'',kind:i.kind,galleryId:i.gid||'',designId:i.designId||'',title:String(i.title).slice(0,80),gar:i.gar,model:(i.model||'').slice(0,60),vr:i.vr||null,modelId:i.modelId||'',color:i.color,size:i.size,qty:i.qty,unit:i.unit,idea:(i.idea||'').slice(0,600),places:(i.places||[]),text:(i.text||'').slice(0,60),photo:i.photo||'',layout:i.layout||'',chest:(i.chest||'').slice(0,20),chestFont:i.chestFont||'',chestPos:i.chestPos||'',chestArc:+i.chestArc||0,mainPlace:i.mainPlace||'',textPos:i.textPos||'',textArc:+i.textArc||0,free:frOut(i.free),placement:wpPlacementForSend(i),font:i.font||'',tcol:i.tcol||'',parts:(i.parts||[]).map(function(p){return {place:p.place,idea:(p.idea||'').slice(0,600),text:(p.text||'').slice(0,60),textPos:p.textPos||'',textArc:+p.textArc||0,free:frOut(p.free),font:p.font||'',tcol:p.tcol||'',photo:p.photo||''}}),alts:(i.alts||[]).map(function(a){return {place:a.place,gid:a.gid||'',designId:a.designId||'',title:String(a.title||'').slice(0,80)}})}}),subtotal:T.sub,ship:T.ship,packDiscount:T.packDesc||0,packPct:T.packPct||0,qtyDiscount:T.qd||0,qtyPct:T.qdPct||0,lookPack:!!T.qdLook,discount:T.disc||0,coupon:T.coupon||'',total:T.total,totalMax:T.totalMax||0};
     try{if(JSON.stringify(data).length>20000){data.items.forEach(function(it){delete it.placement});data.placementDropped=1}}catch(e){}
     if(!EF.url||!EF.owner)return Promise.resolve();
-    return fetch(EF.url+'/rest/v1/ef_web_orders',{method:'POST',headers:{apikey:EF.key,Authorization:'Bearer '+EF.key,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({owner:EF.owner,code:c,channel:'web',data:data})}).then(function(r){if(!r.ok)throw r.status});
+    return fetch(EF.url+'/rest/v1/ef_web_orders',{method:'POST',headers:{apikey:EF.key,Authorization:'Bearer '+EF.key,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({owner:EF.owner,code:c,channel:'web',data:data})}).then(function(r){if(r.ok)return;if(!cart.some(function(i){return i.kind==='art'}))throw r.status;return r.json().catch(function(){return {}}).then(function(j){var e=new Error(j.message||'');e.obra=!!j.message;throw e})});
   }).then(function(){
     var msg='Hola 👋 Acabo de hacer el pedido '+c+' en la web.\n'+cart.map(function(i){return '• '+i.qty+' × '+i.title+' ('+GAR[i.gar]+(i.model?' '+i.model:'')+' '+i.color+', '+i.size+')'+(i.layout==='chestback'?'\n   Nombre en el pecho ('+(CPN[i.chestPos||'left']||'').toLowerCase()+'): '+i.chest+(+i.chestArc?' ['+arcLbl(i.chestArc)+']':'')+' · diseño en la espalda':'')+placeMsg(i)+(i.text?'\n   Texto: '+i.text+(i.textPos&&i.textPos!=='center'?' ('+TPN[i.textPos]+')':'')+(+i.textArc?' ['+arcLbl(i.textArc)+']':''):'')+(i.text&&(i.font||i.tcol)?'\n   Texto en '+fontTxt(i):'')+(i.free?'\n   '+freeTxt(i.free,i.gar,i.mainPlace||((i.places||[])[0])||'front'):'')+(i.idea?'\n   Idea: '+i.idea:'')+partsMsg(i)+(i.file||i.fileData||i.hadFile||(i.parts||[]).some(function(p){return p.file||p.fileData||p.hadFile})?'\n   (te mando la foto por aquí)':'')}).join('\n')+(T.packDesc?'\nPack look completo'+(T.packPct?' (−'+T.packPct+' %)':'')+': −'+eur(T.packDesc):'')+(T.qd?'\nDescuento por cantidad (−'+T.qdPct+' %): −'+eur(T.qd):'')+(T.coupon?'\nCódigo: '+T.coupon+' (−'+eur(T.disc)+')':'')+'\nTotal: '+eur(T.total)+(T.totalMax?' – '+eur(T.totalMax):'')+'\nA nombre de '+ORD.name;
     var wa=waLink(msg),hadCustom=cart.some(function(i){return i.kind==='custom'}),crJ=crCollect(c);if(T.coupon&&T.coupon===welcomeS().code)welcomeGuarda();cart=[];saveCart();ORD.busy=false;ORD.coupon='';
     $('#sheet').innerHTML='<button class="x" data-close aria-label="Cerrar">×</button><div class="done"><div class="big">🎉</div><h2 style="margin:0">¡Pedido recibido!</h2><div class="code">'+c+'</div>'+payHtml(c,T.total,hadCustom)+(wa?'<a class="btn wa" target="_blank" rel="noopener" href="'+wa+'">Mandarlo también por WhatsApp</a>':'')+'</div>';crAfterOrder(crJ);
-  }).catch(function(e){ORD.busy=false;ORD.err=e&&e.message==='WP_PHOTO_UPLOAD'?'No se pudieron subir todas las fotos. Reintenta antes de enviar el pedido.':'No se ha podido enviar. Revisa tu conexión o pídelo por WhatsApp.';renderCart()})}
+  }).catch(function(e){ORD.busy=false;ORD.err=e&&e.obra?e.message:e&&e.message==='WP_PHOTO_UPLOAD'?'No se pudieron subir todas las fotos. Reintenta antes de enviar el pedido.':'No se ha podido enviar. Revisa tu conexión o pídelo por WhatsApp.';renderCart()})}
 /* diálogo */
 var lastFocus=null;function openDlg(){lastFocus=document.activeElement;$('#dlg').classList.add('open');document.body.style.overflow='hidden';setTimeout(function(){var b=$('#sheet .x');if(b)b.focus()},30)}
 function closeDlg(){$('#dlg').classList.remove('open');document.body.style.overflow='';if(lastFocus&&lastFocus.focus)lastFocus.focus()}
@@ -1905,7 +2183,7 @@ function crNetUrl(net,h,link){if(net==='otra')return String(link||'').length<=20
 function crFigures(){var p=crCfg().prizes||{};return !!crCfg().showPrizes&&Object.keys(p).some(function(k){return +p[k]>0})}
 function crSess(){try{var s=JSON.parse(localStorage.getItem(CRK)||'null');return s&&s.at&&s.uid?s:null}catch(e){return null}}
 function crStore(j){var old=crSess()||{},u=j.user||{};var s={at:j.access_token,rt:j.refresh_token||old.rt,exp:Date.now()+(j.expires_in||3600)*1000-60000,uid:u.id||old.uid,email:u.email||old.email||''};localStorage.setItem(CRK,JSON.stringify(s));return s}
-function crForget(){try{localStorage.removeItem(CRK)}catch(e){}CR.me=null;CR.subs=[];CR.pts=[];CR.loaded=false}
+function crForget(){try{localStorage.removeItem(CRK)}catch(e){}CR.me=null;CR.subs=[];CR.pts=[];CR.loaded=false;var a=$('#nfArtPanel');if(a)a.replaceChildren()}
 function crB64(buf){return btoa(String.fromCharCode.apply(null,new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
 function crInApp(){return /Instagram|FBAN|FBAV|FB_IAB|Line\/|; wv\)/.test(navigator.userAgent||'')}
 function crSignIn(){
@@ -2287,7 +2565,7 @@ load().then(function(){S.gars=(S.gars||[]).filter(function(g){return GAR[g]});if
 
   /* ===== Anotador privado: solo el dueño. Se ve únicamente en un dispositivo donde ha iniciado sesión en el Prompter de esta misma dirección; el público no ve nada, tampoco con #admin. Misma interfaz que el del Prompter. ===== */
   (function(){
-    var KEY='ef.adm',NK='ef.adm.an',VER='10.10',st=null,AN={notes:[],del:{},pos:null,hidden:false,mini:false,ign:{},noted:{},open:{new:true,wait:false,chk:true,done:false}},RAD={errors:[]},U={tab:'notes',f:'all',type:'bug',src:'web',edit:null,redo:null,send:'all',sync:'',ok:0,busy:false,login:false,err:'',open:false},tm=0,DRAG=null,ST=false;
+    var KEY='ef.adm',NK='ef.adm.an',VER='10.12',st=null,AN={notes:[],del:{},pos:null,hidden:false,mini:false,ign:{},noted:{},open:{new:true,wait:false,chk:true,done:false}},RAD={errors:[]},U={tab:'notes',f:'all',type:'bug',src:'web',edit:null,redo:null,send:'all',sync:'',ok:0,busy:false,login:false,err:'',open:false},tm=0,DRAG=null,ST=false;
     try{st=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){}
     try{var a0=JSON.parse(localStorage.getItem(NK)||'null');if(a0&&Array.isArray(a0.notes))AN=Object.assign(AN,a0)}catch(e){}
     if(!EF.url||!EF.key||!EF.owner)return;
