@@ -814,6 +814,11 @@ header.top nav .cr-nav{order:5}
 .nf-art-work select{width:100%;min-width:0}.nf-art [data-art-request-link][hidden]{display:none}
 .nf-art-cases{margin:10px 0;padding:0;list-style:none;display:grid;gap:8px}
 .nf-art-cases li{border:1px solid var(--line);border-radius:11px;padding:8px 12px}
+#tus-disenos-propios{scroll-margin-top:100px}
+.nf-art-steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:10px;padding:0;list-style:none;margin:16px 0}
+.nf-art-steps li{padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+.nf-art-steps b,.nf-art-steps span{display:block}.nf-art-steps span{margin-top:4px;color:var(--ink2)}
+.nf-art summary.btn{display:inline-flex;width:fit-content}
 .nf-art-sales{display:block;margin:3px 0;color:var(--ink2);font-size:12px}
 #nfArtHighlight:not([hidden]){display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 #nfArtHighlight :is(strong,small,span){display:block}
@@ -874,7 +879,20 @@ header.top nav .cr-nav{order:5}
   <h2>Diseños</h2><p class="sub">Toca uno para verlo en tu prenda y en el color que quieras.</p>
 <div class="nf-gallery-search"><label for="nfGalleryQuery">Buscar en Diseños</label><input type="search" id="nfGalleryQuery" class="t" maxlength="80" placeholder="Busca por título, estilo o artista" autocomplete="off" aria-controls="grid"><span id="nfGalleryStatus" class="note" role="status"></span></div>
   <div class="gbar"><div class="chips" id="tags"></div><div class="seg" id="viewSeg" role="group" aria-label="Cómo ver los diseños"><button aria-pressed="true" data-v="on">En prenda</button><button aria-pressed="false" data-v="off">Solo diseño</button></div></div>
-<div class="nf-art" id="nfArtPublicProfile" hidden></div><div class="nf-art" id="nfArtHighlight" hidden></div><section class="nf-art" id="nfArtCatalog" hidden></section><div class="nf-art" id="nfHandmade" hidden><h3>Arte hecho a mano</h3><p class="note">Presenta una obra propia sin hacer ningún pedido. El taller revisará cómo la creaste antes de proponerte una colaboración.</p><details><summary data-art-open>Presentar una obra</summary><div id="nfArtPanel"></div></details></div>
+<div class="nf-art" id="nfArtPublicProfile" hidden></div><div class="nf-art" id="nfArtHighlight" hidden></div><section class="nf-art" id="nfArtCatalog" hidden></section>
+<section class="nf-art" id="tus-disenos-propios" aria-labelledby="nfArtJoinTitle">
+  <h3 id="nfArtJoinTitle">Tus diseños propios</h3>
+  <p><strong>Gana dinero publicando tu arte en NEW FILE.</strong> Si aprobamos tu obra y acordamos publicarla, cobras en euros el importe pactado por cada venta confirmada.</p>
+  <p>El programa es para mayores de edad que crean obras originales a mano, sin IA generativa. Puedes enviar tu primera obra sin hacer ningún pedido. El programa de puntos funciona por separado.</p>
+  <ol class="nf-art-steps">
+    <li><b>1. Presenta tu obra</b><span>Ten a mano la imagen final y al menos una foto o boceto del proceso. Instagram o portafolio es opcional.</span></li>
+    <li><b>2. Revisamos cómo la hiciste</b><span>El taller comprueba la autoría en privado y puede pedirte más detalles.</span></li>
+    <li><b>3. Acordamos cuánto cobras</b><span>Antes de publicar, decides con el taller dónde se puede estampar y cuánto ganas por venta.</span></li>
+  </ol>
+  <p class="note" id="nfArtJoinStatus" role="status">La presentación online se abre cuando el formulario está disponible.</p>
+  <a class="btn alt" id="nfArtJoinContact" target="_blank" rel="noopener" hidden>Consultar por WhatsApp</a>
+  <div id="nfHandmade" hidden><details><summary class="btn" data-art-open>Presentar mi primera obra</summary><div id="nfArtPanel"></div></details></div>
+</section>
   <div class="grid" id="grid"></div>
 </div></section>
 
@@ -1561,11 +1579,14 @@ function artMonthLabel(){
   return year+'-'+String(month).padStart(2,'0')+'-01';
 }
 function artCheckAvailability(){
+  var contact=$('#nfArtJoinContact');
+  var url=waLink('Hola, quiero presentar mis diseños originales hechos a mano y saber cómo colaborar con NEW FILE.');
+  if(url&&!NF_ART.available){contact.href=url;contact.hidden=false}else{contact.removeAttribute('href');contact.hidden=true}
   if(NF_ART.loading||NF_ART.checked||!crReady())return;
   NF_ART.loading=true;
   rest('ef_art_profiles?select=id&limit=0').then(function(){
     NF_ART.checked=NF_ART.available=true;
-    var section=$('#nfHandmade');if(section)section.hidden=false;artPublicProfile();
+    $('#nfHandmade').hidden=false;$('#nfArtJoinStatus').hidden=true;contact.hidden=true;artPublicProfile();
     return rest('ef_art_sales_totals?select=gallery_id,month,units&month=in.(0001-01-01,'+artMonthLabel()+')&limit=10000');
   }).then(function(result){
     result.forEach(function(x){var group=x.month==='0001-01-01'?NF_ART.totals:NF_ART.month;
@@ -2186,11 +2207,12 @@ function crStore(j){var old=crSess()||{},u=j.user||{};var s={at:j.access_token,r
 function crForget(){try{localStorage.removeItem(CRK)}catch(e){}CR.me=null;CR.subs=[];CR.pts=[];CR.loaded=false;var a=$('#nfArtPanel');if(a)a.replaceChildren()}
 function crB64(buf){return btoa(String.fromCharCode.apply(null,new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
 function crInApp(){return /Instagram|FBAN|FBAV|FB_IAB|Line\/|; wv\)/.test(navigator.userAgent||'')}
-function crSignIn(){
+function crSignIn(forArtwork){
   if(crInApp()||!window.crypto||!crypto.subtle){say('Abre la web en Chrome o Safari para entrar con Google');return}
   var w=null;try{w=window.open('about:blank','wpcrea')}catch(e){}
   var ver=crB64(crypto.getRandomValues(new Uint8Array(48)));
   try{localStorage.setItem(CRV,ver);if(w)localStorage.setItem(CRP,String(Date.now()));else{localStorage.removeItem(CRP);try{saveDraft()}catch(e){}}}catch(e){if(w)w.close();say('Tu navegador no deja guardar la sesión');return}
+  try{if(forArtwork&&!w)sessionStorage.setItem('nf.art.login','1');else sessionStorage.removeItem('nf.art.login')}catch(e){}
   crypto.subtle.digest('SHA-256',new TextEncoder().encode(ver)).then(function(h){
     var url=EF.url+'/auth/v1/authorize?provider=google&redirect_to='+encodeURIComponent(location.origin+location.pathname+'?crea=1')+'&code_challenge='+crB64(h)+'&code_challenge_method=s256';
     if(w)w.location.href=url;else location.href=url;
@@ -2202,7 +2224,9 @@ function crReturn(){
   var hq=new URLSearchParams(location.hash.slice(1)),code=q.get('code'),bad=q.get('error_description')||q.get('error')||hq.get('error_description')||hq.get('error'),ver='',pop=false;
   try{ver=localStorage.getItem(CRV)||'';pop=Date.now()-(+localStorage.getItem(CRP)||0)<10*60000;localStorage.removeItem(CRP)}catch(e){}
   try{history.replaceState(null,'',location.pathname)}catch(e){}
-  var end=function(m){if(pop){try{window.close()}catch(e){}}if(m)say(m);crShow()};
+  var artwork=false;try{artwork=sessionStorage.getItem('nf.art.login')==='1';sessionStorage.removeItem('nf.art.login')}catch(e){}
+  var end=function(m){if(pop){try{window.close()}catch(e){}}if(m)say(m);
+    if(artwork&&!pop){var section=$('#tus-disenos-propios');section.querySelector('details').open=true;artFormPanel();section.scrollIntoView();return}crShow()};
   if(bad){end(/signups? (not allowed|disabled)/i.test(bad)?'Todavía no se pueden crear cuentas nuevas':'No se ha podido entrar con Google');return true}
   if(!code||!ver||!crReady())return true;
   fetch(EF.url+'/auth/v1/token?grant_type=pkce',{method:'POST',headers:{apikey:EF.key,'Content-Type':'application/json'},body:JSON.stringify({auth_code:code,code_verifier:ver})})
@@ -2339,7 +2363,7 @@ document.addEventListener('click',function(e){var t=e.target.closest&&e.target.c
   if(d.crwadrop!=null){try{localStorage.removeItem(CRW)}catch(x){}CR.wmsg='';crRenderMine();return}
   if(d.close!=null){CR.view=false;return}
   if(d.crmine!=null){e.preventDefault();try{moreClose()}catch(x){}crShow();return}
-  if(d.crlogin!=null){crSignIn();return}
+  if(d.crlogin!=null){crSignIn(!!t.closest('#nfArtPanel'));return}
   if(d.crage){CR.f.age=d.crage;CR.msg='';crPaintAll();return}
   if(d.crface){CR.face=d.crface;crPaint();return}
   if(d.crsave!=null){crSave();return}
@@ -2565,7 +2589,7 @@ load().then(function(){S.gars=(S.gars||[]).filter(function(g){return GAR[g]});if
 
   /* ===== Anotador privado: solo el dueño. Se ve únicamente en un dispositivo donde ha iniciado sesión en el Prompter de esta misma dirección; el público no ve nada, tampoco con #admin. Misma interfaz que el del Prompter. ===== */
   (function(){
-    var KEY='ef.adm',NK='ef.adm.an',VER='10.13',st=null,AN={notes:[],del:{},pos:null,hidden:false,mini:false,ign:{},noted:{},open:{new:true,wait:false,chk:true,done:false}},RAD={errors:[]},U={tab:'notes',f:'all',type:'bug',src:'web',edit:null,redo:null,send:'all',sync:'',ok:0,busy:false,login:false,err:'',open:false},tm=0,DRAG=null,ST=false;
+    var KEY='ef.adm',NK='ef.adm.an',VER='10.14',st=null,AN={notes:[],del:{},pos:null,hidden:false,mini:false,ign:{},noted:{},open:{new:true,wait:false,chk:true,done:false}},RAD={errors:[]},U={tab:'notes',f:'all',type:'bug',src:'web',edit:null,redo:null,send:'all',sync:'',ok:0,busy:false,login:false,err:'',open:false},tm=0,DRAG=null,ST=false;
     try{st=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){}
     try{var a0=JSON.parse(localStorage.getItem(NK)||'null');if(a0&&Array.isArray(a0.notes))AN=Object.assign(AN,a0)}catch(e){}
     if(!EF.url||!EF.key||!EF.owner)return;
@@ -3487,8 +3511,8 @@ window.__web={placement:function(){return wpPlacement.apply(null,arguments)},fon
         '<p class="note">Precios orientativos con una imagen por prenda a tamaño normal. Te confirmamos el total antes de fabricar.</p></div>'}
     var nav=$('header.top nav');if(nav&&!nav.querySelector('a[data-sec="pack"]')){var ref=nav.querySelector('a[data-sec="disenos"]');if(ref)ref.insertAdjacentElement('beforebegin',nodo('<a href="#pack" data-sec="pack">Pack −'+I.pct+' %</a>'))}
     var hp=$('.hero .wp10-pack');if(hp&&!$('.hero .wp11-como'))hp.insertAdjacentElement('afterend',nodo('<a class="wp11-como" href="#pack">Cómo funciona el pack y cuánto ahorras ›</a>'))}
-  function avisoArtista(){var u=window.WPDIS.waLink('Hola 👋 Soy artista, tengo diseños propios y quiero publicarlos y darlos a conocer con vosotros');
-    return u?'<a class="nf-artista" target="_blank" rel="noopener" href="'+u.replace(/"/g,'%22')+'"><i aria-hidden="true">🎨</i><span><b>¿Eres artista de diseños propios?</b> ¡Ponte en contacto con nosotros para publicarte y darte publicidad! ›</span></a>':''}
+  function avisoArtista(){
+    return '<a class="nf-artista" href="#tus-disenos-propios"><i aria-hidden="true">🎨</i><span><b>Tus diseños propios</b> Gana dinero con tu arte hecho a mano ›</span></a>'}
   /* bajo el titular: la galería es nuestra y de los clientes que se apuntan a los puntos con su cuenta de Google */
   function galeriaInicio(){var lead=document.getElementById('heroLead'),I=window.WPDIS;if(!lead||!I||!I.galeria)return;var X=I.galeria();
     var a=document.getElementById('heroGaleria');if(!a){a=nodo('<div id="heroGaleria" class="nf-galeria"></div>');lead.insertAdjacentElement('afterend',a)}
