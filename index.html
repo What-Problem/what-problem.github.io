@@ -896,14 +896,14 @@ header.top nav .cr-nav{order:5}
   <h3 id="nfArtJoinTitle">Tus diseños propios</h3>
   <p><strong>Gana dinero publicando tu arte en NEW FILE.</strong> Si aprobamos tu obra y acordamos publicarla, cobras en euros el importe pactado por cada venta confirmada.</p>
   <p>El programa es para mayores de edad que crean obras originales a mano, sin IA generativa. Puedes enviar tu primera obra sin hacer ningún pedido. El programa de puntos funciona por separado.</p>
+  <p><strong>Consulta el historial privado de tus obras.</strong> Podrás ver las ventas registradas, las unidades devueltas, el importe de cada operación y tus liquidaciones. Las devoluciones pueden ajustar tu saldo según el acuerdo con el taller.</p>
   <ol class="nf-art-steps">
     <li><b>1. Presenta tu obra</b><span>Ten a mano la imagen final y al menos una foto o boceto del proceso. Instagram o portafolio es opcional.</span></li>
     <li><b>2. Revisamos cómo la hiciste</b><span>El taller comprueba la autoría en privado y puede pedirte más detalles.</span></li>
     <li><b>3. Acordamos cuánto cobras</b><span>Antes de publicar, decides con el taller dónde se puede estampar y cuánto ganas por venta.</span></li>
   </ol>
-  <p class="note" id="nfArtJoinStatus" role="status">La presentación online se abre cuando el formulario está disponible.</p>
-  <a class="btn alt" id="nfArtJoinContact" target="_blank" rel="noopener" hidden>Consultar por WhatsApp</a>
-  <div id="nfHandmade" hidden><details><summary class="btn" data-art-open>Presentar mi primera obra</summary><div id="nfArtPanel"></div></details></div>
+  <p class="note">Primero envías tu solicitud aquí. Después puedes abrir WhatsApp con su referencia para hablar con el taller.</p>
+  <div id="nfHandmade"><details><summary class="btn" data-art-open>Empezar mi inscripción</summary><div id="nfArtPanel"></div></details></div>
 </section>
   <div class="grid" id="grid"></div>
 </div></section>
@@ -1591,14 +1591,11 @@ function artMonthLabel(){
   return year+'-'+String(month).padStart(2,'0')+'-01';
 }
 function artCheckAvailability(){
-  var contact=$('#nfArtJoinContact');
-  var url=waLink('Hola, quiero presentar mis diseños originales hechos a mano y saber cómo colaborar con NEW FILE.');
-  if(url&&!NF_ART.available){contact.href=url;contact.hidden=false}else{contact.removeAttribute('href');contact.hidden=true}
   if(NF_ART.loading||NF_ART.checked||!crReady())return;
   NF_ART.loading=true;
   rest('ef_art_profiles?select=id&limit=0').then(function(){
     NF_ART.checked=NF_ART.available=true;
-    $('#nfHandmade').hidden=false;$('#nfArtJoinStatus').hidden=true;contact.hidden=true;artPublicProfile();
+    artPublicProfile();
     return rest('ef_art_sales_totals?select=gallery_id,month,units&month=in.(0001-01-01,'+artMonthLabel()+')&limit=10000');
   }).then(function(result){
     result.forEach(function(x){var group=x.month==='0001-01-01'?NF_ART.totals:NF_ART.month;
@@ -1807,17 +1804,44 @@ function artRequestForm(){
     '<label class="check"><input type="checkbox" name="privacy" required><span>He leído <a href="privacidad.html#arte" target="_blank" rel="noopener">cómo se tratan mis pruebas</a>: solo las ve el taller y se borran cuando vence su plazo.</span></label>'+
     '<p class="note" id="nfArtFormStatus" role="status"></p><button class="btn" type="submit">Enviar para revisión</button></form>';
 }
-function artFormPanel(){
+async function artHistory(box,offset){
+  var session=crSess();
+  if(!box||!session)return;
+  box.setAttribute('aria-busy','true');
+  try {
+    var data=await crRpc('ef_art_my_history',{p_offset:offset});
+    if((crSess()||{}).uid!==session.uid||!box.isConnected)return;
+    var labels={returned:'Devuelta',partial:'Devolución parcial',pending:'Pendiente',confirmed:'Confirmada',paid:'Pago registrado',adjusted:'Ajuste de liquidación'};
+    var rows=data.rows.map(function(row){
+      var unit=Number.isInteger(row.qty)?'<span>'+row.qty+' uds. · '+row.returned+' devueltas · '+eur(row.unit_cents/100)+' por unidad</span>':'';
+      return '<li><strong>'+esc(row.title||labels[row.state])+'</strong> · '+esc(String(row.date).slice(0,10))+
+        ' · '+esc(labels[row.state]||'Movimiento')+' · <b>'+eur(row.amount_cents/100)+'</b>'+
+        (row.garment?' · '+esc(GAR[row.garment]||row.garment):'')+'<br>'+unit+'<br><small>Ref. '+esc(row.reference)+'</small></li>';
+    });
+    box.innerHTML='<p><strong>Saldo actual '+eur(data.balance_cents/100)+'</strong> · Liquidado '+eur(data.paid_cents/100)+'</p>'+
+      (rows.length?'<ul class="nf-art-cases">'+rows.join('')+'</ul>':'<p>Aún no hay movimientos registrados.</p>')+
+      (offset?'<button class="chip" type="button" data-art-history-page="'+(offset-25)+'">Anterior</button> ':'')+
+      (offset+25<data.count?'<button class="chip" type="button" data-art-history-page="'+(offset+25)+'">Siguiente</button>':'');
+  }catch(err){if(box.isConnected&&(crSess()||{}).uid===session.uid)box.innerHTML='<p role="alert">No se pudo consultar el historial.</p><button class="chip" type="button" data-art-history-page="'+offset+'">Reintentar</button>'}
+  finally{box.removeAttribute('aria-busy')}
+}
+function artContactLink(row){
+  if(!row||!['submitted','changes','verified','rejected','paused'].includes(row.state))return '';
+  var url=waLink('Hola, he presentado una obra para colaborar con NEW FILE.\nObra: '+row.title+'\nTécnica: '+row.technique+'\nReferencia de solicitud: '+row.id+'\n¿Podemos hablar sobre mi solicitud?');
+  return url?'<a class="chip" href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">Hablar con el taller por WhatsApp</a>':'';
+}
+function artFormPanel(confirmation){
   var panel=$('#nfArtPanel'),session=crSess();
   if(!panel)return;
   if(!session){panel.innerHTML='<p>Entra con Google para presentar tus obras y seguir su revisión.</p>'+ (crInApp()?'<p class="note">Abre la tienda en el navegador para entrar con Google.</p>':'<button class="btn" type="button" data-crlogin>Entrar con Google</button>');return}
-  panel.innerHTML='<p role="status">Cargando tus solicitudes…</p>';
+  var sent=confirmation?'<div class="nf-art" id="nfArtConfirmation" role="status" tabindex="-1"><strong>Solicitud enviada al taller</strong><p>Tus imágenes y la explicación quedan guardadas en privado. Puedes enviar este resumen por WhatsApp para iniciar la conversación.</p>'+artContactLink(confirmation)+'</div>':'';
+  panel.innerHTML=sent+'<p role="status">Cargando tus solicitudes…</p>';
   crApi('/rest/v1/ef_art_applications?select=id,title,technique,process,portfolio,attested,state,review_message&artist=eq.'+encodeURIComponent(session.uid)+'&order=created_at.desc&limit=50').then(function(list){
     if((crSess()||{}).uid!==session.uid)return;
-    panel.innerHTML='<nav class="nf-art-shortcuts" aria-label="Área de artista"><a class="chip" href="#nfArtForm">Presentar una obra</a><a class="chip" href="#nfArtProfile">Personalizar mi perfil</a>'+
+    panel.innerHTML=sent+'<nav class="nf-art-shortcuts" aria-label="Área de artista"><a class="chip" href="#nfArtForm">Presentar una obra</a><a class="chip" href="#nfArtProfile">Personalizar mi perfil</a><a class="chip" href="#nfArtHistory">Mis ventas y pagos</a>'+
       (list.length?'<a class="chip" href="#nfArtRequests">Mis solicitudes</a>':'')+'</nav>'+
       (list.length?'<div id="nfArtRequests"><h4>Mis solicitudes</h4><ul class="nf-art-cases">'+list.map(function(x){return '<li><strong>'+esc(x.title)+'</strong> <span>'+esc(NF_ART_STATES[x.state]||'En revisión')+'</span>'+
-      (x.review_message?'<p>'+esc(x.review_message)+'</p>':'')+(['draft','changes'].includes(x.state)?'<button class="chip" type="button" data-art-resume="'+esc(x.id)+'">Continuar</button>':'')+'</li>'}).join('')+'</ul></div>':'')+artRequestForm()+'<div id="nfArtProfile"></div>';artProfileForm();
+      (x.review_message?'<p>'+esc(x.review_message)+'</p>':'')+(['draft','changes'].includes(x.state)?'<button class="chip" type="button" data-art-resume="'+esc(x.id)+'">Continuar</button>':'')+' '+artContactLink(x)+'</li>'}).join('')+'</ul></div>':'')+artRequestForm()+'<div id="nfArtProfile"></div><section id="nfArtHistory" class="nf-art" aria-labelledby="nfArtHistoryTitle"><h4 id="nfArtHistoryTitle">Mis ventas y pagos</h4><div data-art-history><button class="chip" type="button" data-art-history-page="0">Consultar movimientos</button></div></section>';artProfileForm();
     panel.querySelectorAll('[data-art-resume]').forEach(function(button){button.addEventListener('click',function(){
       var row=list.find(function(x){return x.id===button.dataset.artResume}),form=$('#nfArtForm');
       ['title','technique','process','portfolio'].forEach(function(k){form.elements[k].value=row[k]||''});
@@ -1825,7 +1849,7 @@ function artFormPanel(){
       $('#nfArtFormStatus').textContent='Reenvía los adjuntos que quieras añadir. Las pruebas anteriores siguen en tu solicitud.';
       form.elements.title.focus();
     })});
-  }).catch(function(){if((crSess()||{}).uid===session.uid)panel.innerHTML='<p class="err" role="alert">No se pudieron leer tus solicitudes.</p><button class="chip" type="button" data-art-retry>Reintentar</button>'});
+  }).catch(function(){if((crSess()||{}).uid===session.uid)panel.innerHTML=sent+'<p class="err" role="alert">No se pudieron leer tus solicitudes.</p><button class="chip" type="button" data-art-retry>Reintentar</button>'});
 }
 function artProofUpload(file,path){
   var ext={'image/png':'png','image/jpeg':'jpg','image/webp':'webp'}[file.type];
@@ -1860,14 +1884,19 @@ async function artRequestSend(form){
     await crApi(uri+'?id=eq.'+encodeURIComponent(id),{method:'PATCH',json:{state:'submitted'},headers:{Prefer:'return=representation'}}).then(function(r){
       if(!Array.isArray(r)||r.length!==1)throw Error('La solicitud cambió en otra pestaña. Vuelve a abrir el panel.');
     });
-    say('Obra enviada para revisión');artFormPanel();
+    artFormPanel({id:id,title:record.title,technique:record.technique,state:'submitted'});
+    $('#nfArtConfirmation').scrollIntoView({block:'center'});
   }catch(err){status.textContent=err.message+' El borrador conservado se puede reintentar.'}
   finally{submit.disabled=false}
 }
 document.addEventListener('submit',function(e){if(e.target.id==='nfArtForm'){e.preventDefault();artRequestSend(e.target)}});
 $('#nfHandmade details').addEventListener('toggle',function(){if(this.open&&!$('#nfArtPanel').hasChildNodes())artFormPanel()});
-document.addEventListener('click',function(e){if(e.target.closest('[data-art-retry]'))artFormPanel()});
-window.addEventListener('storage',function(e){if(e.key===CRK&&NF_ART.available&&$('#nfHandmade details').open)artFormPanel()});
+document.addEventListener('click',function(e){
+  if(e.target.closest('[data-art-retry]'))artFormPanel();
+  var page=e.target.closest('[data-art-history-page]');
+  if(page&&page.parentElement.getAttribute('aria-busy')!=='true')artHistory(page.parentElement,+page.dataset.artHistoryPage);
+});
+window.addEventListener('storage',function(e){if(e.key===CRK&&$('#nfHandmade details').open)artFormPanel()});
 
 function renderGrid(){artCheckAvailability();artHighlight();nfReferenceProfile();nfReferenceRender();var tags=[];G.forEach(function(d){(d.tags||[]).forEach(function(t){if(tags.indexOf(t)<0)tags.push(t)})});
   var hasCr=G.some(function(d){return !!crBy(d)});
@@ -2171,7 +2200,7 @@ function legalHtml(k){var L=S.legal||{},n=esc(S.name||'la tienda'),who=L.holder?
     '<h3>2. Precios</h3><p>Los precios son finales, con impuestos incluidos y con el estampado incluido. El envío se indica aparte antes de confirmar: '+eur(+(sh.price!=null?sh.price:4.9))+(sh.freeFrom?', gratis a partir de '+eur(+sh.freeFrom):'')+'. La recogida en mano es gratis.</p><p>Cada prenda personalizada incluye una imagen hasta el tamaño normal de su zona. Agrandarla, y cada imagen añadida, tienen un precio según sus centímetros de ancho, que ves antes de enviar el pedido. El pack look completo (cuatro prendas) tiene el descuento indicado sobre la suma de sus prendas, se aplica al conjunto (si se quita una prenda, se pierde) y solo se puede sumar al código de bienvenida. El código de bienvenida es de un solo uso por persona, para la primera compra; si no corresponde, te lo diremos antes de confirmar el pedido y podrás anularlo sin coste.</p>'+
     '<h3>3. Pago</h3><p>'+(P.bizum||P.iban?'Por '+[P.bizum?'Bizum':'',P.iban?'transferencia bancaria':''].filter(Boolean).join(' o ')+', indicando el código del pedido.':'Por Bizum o transferencia, con los datos que te damos al confirmar el pedido.')+' No pedimos datos de tarjeta en la web.</p>'+
     '<p><b>Extras personalizables y tarjetas:</b> el descuento por cantidad de los extras no se suma al código de bienvenida: se aplica el mayor. La tarjeta de descuento del paquete es una por pedido; su ventaja, código y vigencia van en la propia tarjeta, se aplica al confirmar el pedido, no se cambia por dinero y no se suma a otro descuento salvo que la tarjeta lo diga.</p><h3>4. Plazos de entrega</h3><p><b>Imprevistos:</b> el plazo de preparación es el habitual, pero en casos concretos puede surgir un imprevisto. Si vemos que vamos con retraso, te avisamos por WhatsApp con la nueva previsión. Si el retraso es por un fallo nuestro, te compensamos: con un detalle dentro del paquete si aún no ha salido o, según el caso, con un descuento en tu próximo pedido (o puntos, si eres artista de NEW FILE). Esto no limita tus derechos como consumidor.</p><p>Preparamos el pedido en '+esc(sh.prep||'menos de 24 h')+' desde que recibimos el pago (y, si es personalizado, desde que apruebas la prueba). Si eliges envío, el transporte tarda '+esc(sh.transit||'24-72 h')+'. Si hubiera un retraso, te avisamos por WhatsApp.</p>'+
-    '<h3>5. Cambios y devoluciones</h3><p><b>Diseños personalizados</b> (con tu foto, tu idea o tu texto): al hacerse a medida según tus indicaciones, no tienen derecho de desistimiento (art. 103.c de la Ley General para la Defensa de los Consumidores y Usuarios). Por eso te enseñamos la prueba antes.</p><p><b>Diseños de nuestra galería</b>: tienes 14 días naturales desde que lo recibes para devolverlo sin dar explicaciones, siempre que la prenda esté sin usar, sin lavar y en buen estado. Escríbenos por WhatsApp; los gastos de devolución corren de tu cuenta y te devolvemos el importe en un máximo de 14 días desde que la recibimos.</p><p>Si quieres <b>cambiar la talla</b>, escríbenos antes de que la preparemos y la cambiamos sin coste.</p>'+
+    '<h3>5. Cambios y devoluciones</h3><p><b>Encargos claramente personalizados</b> (por ejemplo, con tu foto, nombre o texto): puedes pedir cancelar sin coste antes de que confirmemos el inicio de producción. Al hacerse según tus indicaciones, se aplica la excepción al desistimiento por cambio de opinión (art. 103.c). Si la prenda llega defectuosa o difiere de lo acordado, escríbenos para tramitar la solución que corresponda.</p><p><b>Prendas estándar de galería</b>: puedes comunicar tu desistimiento dentro de los 14 días naturales desde la entrega. Elige «Hablar con alguien» en WhatsApp para tramitarlo. Te informaremos de cómo devolverla. Puedes examinarla como en una tienda; si se manipula más de lo necesario, puede aplicarse una reducción por pérdida de valor. El reembolso se tramita dentro del plazo legal y puede retenerse hasta recibir la prenda o la prueba de envío.</p><p>Si quieres <b>cambiar la talla</b>, escríbenos antes de que la preparemos y la cambiamos sin coste.</p>'+
     '<h3>6. Garantía</h3><p>Si la prenda o el estampado tienen un defecto de fabricación, te la cambiamos o te devolvemos el dinero. Tienes la garantía legal de 3 años. Sigue las instrucciones de lavado (del revés, a 30 °C, sin secadora y sin planchar encima del estampado).</p>'+
     '<h3>7. Contacto y reclamaciones</h3><p>Para cualquier duda o reclamación: '+(contact||'[email o WhatsApp]')+'. Si no llegamos a un acuerdo, puedes acudir a los servicios de consumo de tu comunidad autónoma.</p>'+
     '<h3>8. Ley aplicable</h3><p>Estas condiciones se rigen por la ley española.</p>'}
@@ -2634,7 +2663,7 @@ load().then(function(){S.gars=(S.gars||[]).filter(function(g){return GAR[g]});if
 
   /* ===== Anotador privado: solo el dueño. Se ve únicamente en un dispositivo donde ha iniciado sesión en el Prompter de esta misma dirección; el público no ve nada, tampoco con #admin. Misma interfaz que el del Prompter. ===== */
   (function(){
-    var KEY='ef.adm',NK='ef.adm.an',VER='10.17',st=null,AN={notes:[],del:{},pos:null,hidden:false,mini:false,ign:{},noted:{},open:{new:true,wait:false,chk:true,done:false}},RAD={errors:[]},U={tab:'notes',f:'all',type:'bug',src:'web',edit:null,redo:null,send:'all',sync:'',ok:0,busy:false,login:false,err:'',open:false},tm=0,DRAG=null,ST=false;
+    var KEY='ef.adm',NK='ef.adm.an',VER='10.19',st=null,AN={notes:[],del:{},pos:null,hidden:false,mini:false,ign:{},noted:{},open:{new:true,wait:false,chk:true,done:false}},RAD={errors:[]},U={tab:'notes',f:'all',type:'bug',src:'web',edit:null,redo:null,send:'all',sync:'',ok:0,busy:false,login:false,err:'',open:false},tm=0,DRAG=null,ST=false;
     try{st=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){}
     try{var a0=JSON.parse(localStorage.getItem(NK)||'null');if(a0&&Array.isArray(a0.notes))AN=Object.assign(AN,a0)}catch(e){}
     if(!EF.url||!EF.key||!EF.owner)return;
